@@ -1,0 +1,67 @@
+# Flutter/Dart tool files
+.dart_tool/
+.packages
+.flutter-plugins
+.flutter-plugins-dependencies
+
+# Build outputs
+build/
+build/web/
+
+# iOS specific
+ios/Flutter/Flutter.framework
+ios/Flutter/Flutter.podspec
+ios/Flutter/Generated.xcconfig
+ios/Flutter/ephemeral/
+ios/Pods/
+ios/Runner.xcworkspace/
+ios/Flutter/App.framework
+
+# Android specific
+.gradle/
+**/build/
+local.properties
+*.iml
+
+# Desktop platforms
+macos/Flutter/Flutter.framework
+macos/Flutter/ephemeral/
+macos/Pods/
+macos/Runner.xcworkspace/
+windows/flutter/ephemeral/
+linux/flutter/
+
+# IDE files
+.idea/
+.vscode/
+
+# User-specific files
+*.log
+*.lock
+*.tmp
+
+# Generated files
+pubspec.lock
+
+# OS system files
+.DS_Store
+Thumbs.db
+
+# Coverage and test reports
+coverage/
+
+# Misc
+*.apk
+*.aar
+
+# Flutter web build output
+build/web/
+
+# Others
+.flutter-plugins
+.flutter-plugins-dependencies
+
+# Local env files (if any)
+.env
+
+.svn/
