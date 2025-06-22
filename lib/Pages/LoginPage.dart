@@ -20,6 +20,9 @@ import 'package:http/http.dart' as http;
 
 
 import '../type.dart';
+import '../DTO/UserProfileDTO.dart';
+import '../DTO/RoleDTO.dart';
+import '../DTO/PermissionDTO.dart';
 import 'GetCarInfoPage.dart';
 import 'GetCarProblemPage.dart';
 import 'package:autonetwork/Common.dart';
@@ -44,7 +47,7 @@ class _LoginPageState extends State<LoginPage> {
   final TextEditingController _ipController = TextEditingController();
   final TextEditingController _portController = TextEditingController();
   bool _isScanServerButtonEnabled = false;
-  bool _isLoginButtonEnabled = false;
+  bool _isLoginButtonEnabled = true;
   String _appVersion = '';
   String ip = '';
   int port = 8000;
@@ -87,20 +90,20 @@ class _LoginPageState extends State<LoginPage> {
         isChecked = false;
       });
     }
-    if (data != null) {
-      _isLoginButtonEnabled = true;
-      setState(() {
-        ip = data['serverIP'];
-        port = data['serverPort'];
-      });
-    } else {
-      ip = '';
-      port = 8000;
-      _ipController.text = ip;
-      _portController.text = port.toString();
-    }
+    // if (data != null) {
+    //   _isLoginButtonEnabled = true;
+    //   setState(() {
+    //     ip = data['serverIP'];
+    //     port = data['serverPort'];
+    //   });
+    // } else {
+    //   ip = '';
+    //   port = 8000;
+    //   _ipController.text = ip;
+    //   _portController.text = port.toString();
+    // }
 
-    GeneralConfig? cfg = await UserPrefs.getGeneralConfig();
+    // GeneralConfig? cfg = await UserPrefs.getGeneralConfig();
 
   }
   void _loginToWebServer() async{
@@ -112,13 +115,31 @@ class _LoginPageState extends State<LoginPage> {
     try {
       final response = await http.get(Uri.parse(backendUrl));
 
+
       if (response.statusCode == 200) {
+        print(response.body);
         final data = jsonDecode(response.body);
-        String message = data['message'] ?? 'Login successful';
-        String firstName = data['firstName'] ?? '';
-        String lastName = data['lastName'] ?? '';
-        String rolesStr = data['roleName'] ?? '';
+        final userProfile = UserProfileDTO.fromJson(data);
+
+        // String message = data['message'] ?? 'Login successful';
+        // String firstName = data['firstName'] ?? '';
+        // String lastName = data['lastName'] ?? '';
+        // String rolesStr = data['roleName'] ?? '';
+
+        // GeneralConfig cfg = GeneralConfig(MqttConnection: false);
+        // await UserPrefs.saveGeneralConfig(cfg);
+        await UserPrefs.clearUserWithID();
+        await UserPrefs.saveUserWithID(userProfile);
         await UserPrefs.saveLoginTimestamp();
+        if (isChecked) {
+          final storage = FlutterSecureStorage();
+          await storage.write(key: 'username', value: username);
+          await storage.write(key: 'password', value: password);
+        } else {
+          final storage = FlutterSecureStorage();
+          await storage.delete(key: 'username');
+          await storage.delete(key: 'password');
+        }
         if (!mounted) return;
 
         Navigator.pushReplacement(

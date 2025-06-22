@@ -7,6 +7,7 @@ import '../dboAPI.dart';
 import '../type.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 import '../user_prefs.dart';
+import 'package:autonetwork/DTO/UserProfileDTO.dart';
 
 class GetCarProblemPage extends StatefulWidget {
   const GetCarProblemPage({super.key});
@@ -174,7 +175,7 @@ class _GetCarProblemPageState extends State<GetCarProblemPage>
 
   void showRepairDialog() async{
     dboAPI api = dboAPI();
-    UserWithID? user = await UserPrefs.getUserWithID();
+    UserProfileDTO? user = await UserPrefs.getUserWithID();
     print(user!.toJson());
     List<TaskStatus?> task = await UserPrefs.getTaskStatus();
     int task_id = CarInfoUtility.GetTaskID(task, 'START');
@@ -187,7 +188,7 @@ class _GetCarProblemPageState extends State<GetCarProblemPage>
       if (result == true) {
         CarRepairLog log = CarRepairLog(
             car_id: car_id!,
-            creator_user_id: user!.UserID,
+            creator_user_id: 1,
             department_id: null,
             problem_report_id: null,
             car_required_departments_id: null,

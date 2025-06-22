@@ -28,6 +28,7 @@ import '../backend_services/ApiEndpoints.dart';
 
 import 'package:autonetwork/utils/string_helper.dart';
 import '../utils/utility.dart';
+import 'package:autonetwork/DTO/UserProfileDTO.dart';
 
 class UserProfilePage extends StatefulWidget {
   const UserProfilePage({super.key});
@@ -76,15 +77,15 @@ class _UserProfilePageState extends State<UserProfilePage>
   }
 
   void _loadUser() async {
-    UserWithID? user = await UserPrefs.getUserWithID();
+    UserProfileDTO? user = await UserPrefs.getUserWithID();
     dboAPI api = dboAPI();
 
     if (user != null && user.role != null && user.permission != null) {
       setState(() {
-        first_name = user.FirstName;
-        last_name = user.LastName;
-        role_name = user.role!.RoleName;
-        permission_name = user.permission!.PermissionName;
+        first_name = user.firstName;
+        last_name = user.lastName;
+        role_name = user.role!.roleName;
+        permission_name = user.permission!.permissionName;
 
       });
     } else {

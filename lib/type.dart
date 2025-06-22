@@ -49,6 +49,43 @@ class GeneralConfig {
   }
 }
 
+// class UserProfileDTO {
+//   String userId;
+//   String username;
+//   String firstName;
+//   String lastName;
+//   String roleName;
+//   String permissionName;
+//
+//
+//   UserProfileDTO({
+//     required this.userId,
+//     required this.username,
+//     required this.firstName,
+//     required this.lastName,
+//     required this.roleName,
+//     required this.permissionName,
+//   });
+//
+//   factory UserProfileDTO.fromJson(Map<String, dynamic> json) {
+//     return UserProfileDTO(
+//         userId: json['userId'],
+//         username: json['username'],
+//         firstName: json['firstName'],
+//         lastName: json['lastName'],
+//         roleName: json['roleName'],
+//         permissionName: json['permissionName'],
+//     );
+//   }
+//   Map<String, dynamic> toJson() => {
+//     'userId': userId,
+//     'username': username,
+//     'firstName': firstName,
+//     'lastName': lastName,
+//     'roleName': roleName,
+//     'permissionName': permissionName,
+//   };
+// }
 class Role {
   final String RoleName;
 
