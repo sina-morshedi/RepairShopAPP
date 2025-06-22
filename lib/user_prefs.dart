@@ -61,7 +61,6 @@ class UserPrefs {
   static Future<UserWithID?> getUserWithID() async {
     final prefs = await SharedPreferences.getInstance();
     final userJson = prefs.getString(_userKey);
-    print('userJson Get: $userJson');
     if (userJson != null) {
       final Map<String, dynamic> json = jsonDecode(userJson);
       return UserWithID.fromJson(json);
