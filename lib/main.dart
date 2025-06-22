@@ -10,13 +10,13 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'dart:ui';
 import 'dart:ffi' as ffi;
-import 'dart:convert';                    // برای jsonDecode و jsonEncode
+import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 
 import 'type.dart';
-import 'GetCarInfoPage.dart';
-import 'GetCarProblemPage.dart';
+import 'Pages/GetCarInfoPage.dart';
+import 'Pages/GetCarProblemPage.dart';
 import 'package:autonetwork/Common.dart';
 import 'backend_services/backend_services.dart';
 import 'backend_services/ApiEndpoints.dart';

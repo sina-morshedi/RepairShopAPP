@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'dboAPI.dart';
-import 'type.dart';
+import '../dboAPI.dart';
+import '../type.dart';
 import 'package:autonetwork/Common.dart';
 
 class GetCarInfoPage extends StatefulWidget {

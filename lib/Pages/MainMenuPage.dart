@@ -20,8 +20,8 @@ import 'package:http/http.dart' as http;
 
 
 import '../type.dart';
-import '../GetCarInfoPage.dart';
-import '../GetCarProblemPage.dart';
+import 'GetCarInfoPage.dart';
+import 'GetCarProblemPage.dart';
 import 'package:autonetwork/Common.dart';
 import '../backend_services/backend_services.dart';
 import '../backend_services/ApiEndpoints.dart';

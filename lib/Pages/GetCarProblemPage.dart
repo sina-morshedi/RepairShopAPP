@@ -3,10 +3,10 @@ import 'dart:ffi' as ffi;
 import 'package:autonetwork/Common.dart';
 import 'package:autonetwork/GetCarInfoApp.dart';
 import 'package:flutter/material.dart';
-import 'dboAPI.dart';
-import 'type.dart';
+import '../dboAPI.dart';
+import '../type.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
-import 'user_prefs.dart';
+import '../user_prefs.dart';
 
 class GetCarProblemPage extends StatefulWidget {
   const GetCarProblemPage({super.key});
