@@ -28,9 +28,21 @@ class _MainMenuPageState extends State<MainMenuPage> {
     RegisterNewJobPage(),
   ];
 
+  void _onItemTapped(int index) {
+    setState(() {
+      _selectedIndex = index;
+    });
+    _pageController.animateToPage(
+      index,
+      duration: const Duration(milliseconds: 400),
+      curve: Curves.easeOutQuad,
+    );
+  }
+
   @override
   void initState() {
     super.initState();
+    _pageController = PageController(initialPage: _selectedIndex);
 
     // _loadAppVersion();
     _checkLoginStatus();
