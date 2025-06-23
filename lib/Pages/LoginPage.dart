@@ -1,32 +1,13 @@
 import 'package:flutter/material.dart';
 import 'dart:convert';
-import '../type.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'dart:ui';
-import 'package:flutter/material.dart';
-import 'package:water_drop_nav_bar/water_drop_nav_bar.dart';
-import '../dboAPI.dart';
 import '../DataFiles.dart';
 import '../user_prefs.dart';
-import 'package:bcrypt/bcrypt.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:package_info_plus/package_info_plus.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:google_fonts/google_fonts.dart';
-import 'dart:ui';
-import 'dart:ffi' as ffi;
-import 'dart:convert';
 import 'package:http/http.dart' as http;
 
-
-import '../type.dart';
 import '../DTO/UserProfileDTO.dart';
-import '../DTO/RoleDTO.dart';
-import '../DTO/PermissionDTO.dart';
-import 'GetCarInfoPage.dart';
-import 'GetCarProblemPage.dart';
-import 'package:autonetwork/Common.dart';
-import '../backend_services/backend_services.dart';
 import '../backend_services/ApiEndpoints.dart';
 
 import 'package:autonetwork/utils/string_helper.dart';
@@ -73,7 +54,6 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   Future<void> _checkStatus() async {
-    Map<String, dynamic>? data = await readJsonFromFile(fileType.serverConfig);
     final storage = FlutterSecureStorage();
     final user = await storage.read(key: 'username') ?? '';
     final pass = await storage.read(key: 'password') ?? '';

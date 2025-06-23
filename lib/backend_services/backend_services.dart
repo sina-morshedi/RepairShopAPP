@@ -28,7 +28,6 @@ class backend_services {
         }
       } else {
         final data = jsonDecode(response.body);
-        String error = data['error'] ?? 'Fetch failed';
         //TODO Return the appropriate error.
         return [];
       }
@@ -57,7 +56,6 @@ class backend_services {
         }
       } else {
         final data = jsonDecode(response.body);
-        String error = data['error'] ?? 'Fetch failed';
         //TODO Return the appropriate error.
         return [];
       }
@@ -86,7 +84,6 @@ class backend_services {
         }
       } else {
         final data = jsonDecode(response.body);
-        String error = data['error'] ?? 'Fetch failed';
         //TODO Return the appropriate error.
         return [];
       }
@@ -126,7 +123,6 @@ class backend_services {
       final data = jsonDecode(response.body);
       final jsonData = jsonDecode(response.body);
       if (response.statusCode == 200) {
-        final car = CarInfo.fromJson(data);
         return ApiResponse<CarInfo>(
           status: jsonData['status'] ?? 'successful',
           data: CarInfo.fromJson(jsonData),

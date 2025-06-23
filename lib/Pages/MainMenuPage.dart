@@ -1,33 +1,11 @@
 import 'package:flutter/material.dart';
-import 'dart:convert';
-import '../type.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'dart:ui';
-import 'package:flutter/material.dart';
 import 'package:water_drop_nav_bar/water_drop_nav_bar.dart';
-import '../dboAPI.dart';
-import '../DataFiles.dart';
-import '../user_prefs.dart';
-import 'package:bcrypt/bcrypt.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:package_info_plus/package_info_plus.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:google_fonts/google_fonts.dart';
-import 'dart:ui';
-import 'dart:ffi' as ffi;
-import 'dart:convert';                    // برای jsonDecode و jsonEncode
-import 'package:http/http.dart' as http;
 
 
-import '../type.dart';
 import 'GetCarInfoPage.dart';
 import 'GetCarProblemPage.dart';
-import 'package:autonetwork/Common.dart';
-import '../backend_services/backend_services.dart';
-import '../backend_services/ApiEndpoints.dart';
 
-import 'package:autonetwork/utils/string_helper.dart';
-import '../utils/utility.dart';
 import 'LoginPage.dart';
 import 'UserProfilePage.dart';
 import 'RegisterNewJobPage.dart';
@@ -50,21 +28,9 @@ class _MainMenuPageState extends State<MainMenuPage> {
     RegisterNewJobPage(),
   ];
 
-  void _onItemTapped(int index) {
-    setState(() {
-      _selectedIndex = index;
-    });
-    _pageController.animateToPage(
-      index,
-      duration: const Duration(milliseconds: 400),
-      curve: Curves.easeOutQuad,
-    );
-  }
-
   @override
   void initState() {
     super.initState();
-    _pageController = PageController(initialPage: _selectedIndex);
 
     // _loadAppVersion();
     _checkLoginStatus();

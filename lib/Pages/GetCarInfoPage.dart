@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../dboAPI.dart';
 import '../type.dart';
-import 'package:autonetwork/Common.dart';
 import 'package:autonetwork/utils/string_helper.dart';
 import 'package:autonetwork/backend_services/backend_services.dart';
 import 'package:autonetwork/DTO/CarInfo.dart';
@@ -22,9 +21,6 @@ class _GetCarInfoPageState extends State<GetCarInfoPage>
   late Animation<Offset> _slideAnimation;
   late Animation<double> _fadeAnimation;
 
-  bool _isLoading = false;
-  String? _errorMessage;
-  int? _carId;
   final dboAPI api = dboAPI();
 
   static const List<String> tag_dbo = [
@@ -81,12 +77,6 @@ class _GetCarInfoPageState extends State<GetCarInfoPage>
     });
   }
 
-  Future<ApiResponseDatabase<carInfoFromDb>> _fetchCarInfoByLicensePlate(
-    String plate,
-  ) async {
-    return await api.jobGetCarInfoWithID('license_plate', plate);
-  }
-
   Future<void> fetchCarInfo() async {
     String plate = licensePlateNoController.text.trim().toUpperCase();
 
@@ -117,13 +107,13 @@ class _GetCarInfoPageState extends State<GetCarInfoPage>
       final car = response.data!;
 
       setState(() {
-        licensePlateNoController.text = car.licensePlate ?? '';
-        chassisNoController.text = car.chassisNo ?? '';
-        motorNoController.text = car.motorNo ?? '';
-        brandController.text = car.brand ?? '';
-        modelController.text = car.brandModel ?? '';
+        licensePlateNoController.text = car.licensePlate;
+        chassisNoController.text = car.chassisNo;
+        motorNoController.text = car.motorNo;
+        brandController.text = car.brand;
+        modelController.text = car.brandModel;
         yearController.text = car.modelYear?.toString() ?? '';
-        fuelTypeController.text = car.fuelType ?? '';
+        fuelTypeController.text = car.fuelType;
         selectedPlate = licensePlateNoController.text;
       });
     } else {
@@ -467,15 +457,6 @@ class _GetCarInfoPageState extends State<GetCarInfoPage>
                 const SizedBox(height: 20),
                 ElevatedButton(
                   onPressed: () {
-                    final info = {
-                      tag_labelText[0]: chassisNoController.text,
-                      tag_labelText[1]: motorNoController.text,
-                      tag_labelText[2]: isEditMode ? selectedPlate : null,
-                      tag_labelText[3]: brandController.text,
-                      tag_labelText[4]: modelController.text,
-                      tag_labelText[5]: yearController.text,
-                      tag_labelText[6]: fuelTypeController.text,
-                    };
                     saveEditCarInfo();
                   },
                   child: Text(
