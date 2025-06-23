@@ -90,20 +90,6 @@ class _LoginPageState extends State<LoginPage> {
         isChecked = false;
       });
     }
-    // if (data != null) {
-    //   _isLoginButtonEnabled = true;
-    //   setState(() {
-    //     ip = data['serverIP'];
-    //     port = data['serverPort'];
-    //   });
-    // } else {
-    //   ip = '';
-    //   port = 8000;
-    //   _ipController.text = ip;
-    //   _portController.text = port.toString();
-    // }
-
-    // GeneralConfig? cfg = await UserPrefs.getGeneralConfig();
 
   }
   void _loginToWebServer() async{
@@ -117,17 +103,9 @@ class _LoginPageState extends State<LoginPage> {
 
 
       if (response.statusCode == 200) {
-        print(response.body);
         final data = jsonDecode(response.body);
         final userProfile = UserProfileDTO.fromJson(data);
 
-        // String message = data['message'] ?? 'Login successful';
-        // String firstName = data['firstName'] ?? '';
-        // String lastName = data['lastName'] ?? '';
-        // String rolesStr = data['roleName'] ?? '';
-
-        // GeneralConfig cfg = GeneralConfig(MqttConnection: false);
-        // await UserPrefs.saveGeneralConfig(cfg);
         await UserPrefs.clearUserWithID();
         await UserPrefs.saveUserWithID(userProfile);
         await UserPrefs.saveLoginTimestamp();

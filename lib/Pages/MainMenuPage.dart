@@ -77,8 +77,8 @@ class _MainMenuPageState extends State<MainMenuPage> {
     if (timestamp == null ||
         DateTime.now()
             .difference(DateTime.fromMillisecondsSinceEpoch(timestamp))
-            .inDays >=
-            2) {
+            .inHours >=
+            20) {
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (context) => const LoginPage()),

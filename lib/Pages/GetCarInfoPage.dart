@@ -2,6 +2,10 @@ import 'package:flutter/material.dart';
 import '../dboAPI.dart';
 import '../type.dart';
 import 'package:autonetwork/Common.dart';
+import 'package:autonetwork/utils/string_helper.dart';
+import 'package:autonetwork/backend_services/backend_services.dart';
+import 'package:autonetwork/DTO/CarInfo.dart';
+import 'package:autonetwork/backend_services/ApiEndpoints.dart';
 
 class GetCarInfoPage extends StatefulWidget {
   const GetCarInfoPage({super.key});
@@ -10,7 +14,8 @@ class GetCarInfoPage extends StatefulWidget {
   State<GetCarInfoPage> createState() => _GetCarInfoPageState();
 }
 
-class _GetCarInfoPageState extends State<GetCarInfoPage> with SingleTickerProviderStateMixin {
+class _GetCarInfoPageState extends State<GetCarInfoPage>
+    with SingleTickerProviderStateMixin {
   String mode = 'Yeni Araç Kaydı';
   List<List<TextEditingController>> controllers = [];
   late AnimationController _controller;
@@ -30,9 +35,9 @@ class _GetCarInfoPageState extends State<GetCarInfoPage> with SingleTickerProvid
     "brand_model",
     "model_year",
     "fuel_type",
-    "date_time"
+    "date_time",
   ];
-  final int rowCount = tag_dbo.length-1;
+  final int rowCount = tag_dbo.length - 1;
   final int columnCount = 1;
 
   final List<String> tag_labelText = [
@@ -49,15 +54,16 @@ class _GetCarInfoPageState extends State<GetCarInfoPage> with SingleTickerProvid
 
   final TextEditingController chassisNoController = TextEditingController();
   final TextEditingController motorNoController = TextEditingController();
-  final TextEditingController licensePlateNoController = TextEditingController();
+  final TextEditingController licensePlateNoController =
+      TextEditingController();
   final TextEditingController brandController = TextEditingController();
   final TextEditingController modelController = TextEditingController();
   final TextEditingController yearController = TextEditingController();
-  final TextEditingController feulTypeController = TextEditingController();
-
+  final TextEditingController fuelTypeController = TextEditingController();
 
   bool get isEditMode => mode == 'Mevcut Aracı Düzenle';
-  bool get canEdit => !isEditMode || (selectedPlate != null && selectedPlate!.isNotEmpty);
+  bool get canEdit =>
+      !isEditMode || (selectedPlate != null && selectedPlate!.isNotEmpty);
 
   void _onPlateSelected() {
     setState(() {
@@ -69,13 +75,15 @@ class _GetCarInfoPageState extends State<GetCarInfoPage> with SingleTickerProvid
         brandController.clear();
         modelController.clear();
         yearController.clear();
-        feulTypeController.clear();
+        fuelTypeController.clear();
       }
       // saveEditCarInfo();
     });
   }
 
-  Future<ApiResponseDatabase<carInfoFromDb>> _fetchCarInfoByLicensePlate(String plate) async {
+  Future<ApiResponseDatabase<carInfoFromDb>> _fetchCarInfoByLicensePlate(
+    String plate,
+  ) async {
     return await api.jobGetCarInfoWithID('license_plate', plate);
   }
 
@@ -87,12 +95,14 @@ class _GetCarInfoPageState extends State<GetCarInfoPage> with SingleTickerProvid
       return;
     }
 
-    ApiResponseDatabase<carInfo> response = await api.jobGetCarInfo('license_plate', plate);
+    ApiResponseDatabase<carInfo> response = await api.jobGetCarInfo(
+      'license_plate',
+      plate,
+    );
 
     if (response.data != null) {
       carInfo car = response.data!;
       print("Araç bilgileri bulundu: ${car.license_plate}");
-
     } else if (response.dbo_error != null) {
       print("Hata: ${response.dbo_error!.message}");
     } else if (response.error != null) {
@@ -100,25 +110,35 @@ class _GetCarInfoPageState extends State<GetCarInfoPage> with SingleTickerProvid
     }
   }
 
-  void searchByPlate() async{
-    carInfoFromDb? car = await CarInfoUtility.searchByPlate(context, tag_labelText[2], searchController.text.trim().toUpperCase());
-    if (car != null) {
+  void searchByPlate() async {
+    final ApiResponse<CarInfo> response = await backend_services()
+        .getCarInfoByLicensePlate(searchController.text.trim());
+    if (response.status == 'successful' && response.data != null) {
+      final car = response.data!;
+
       setState(() {
-        _carId = car.car_id;
-        licensePlateNoController.text = car.license_plate ?? '';
-        chassisNoController.text = car.chassis_no ?? '';
-        motorNoController.text = car.motor_no ?? '';
+        licensePlateNoController.text = car.licensePlate ?? '';
+        chassisNoController.text = car.chassisNo ?? '';
+        motorNoController.text = car.motorNo ?? '';
         brandController.text = car.brand ?? '';
-        modelController.text = car.brand_model ?? '';
-        yearController.text = car.model_year?.toString() ?? '';
-        feulTypeController.text = car.fuel_type ?? '';
+        modelController.text = car.brandModel ?? '';
+        yearController.text = car.modelYear?.toString() ?? '';
+        fuelTypeController.text = car.fuelType ?? '';
         selectedPlate = licensePlateNoController.text;
       });
-
+    } else {
+      StringHelper.showErrorDialog(
+        context,
+        response.message ?? 'Araç bulunamadı veya sunucu hatası',
+      );
     }
   }
 
-  void showErrorDialog(BuildContext context, String errorMessage, String errorCode) {
+  void showErrorDialog(
+    BuildContext context,
+    String errorMessage,
+    String errorCode,
+  ) {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -155,104 +175,100 @@ class _GetCarInfoPageState extends State<GetCarInfoPage> with SingleTickerProvid
   }
 
   bool validateString(String tag, String str) {
-      if (str.isEmpty) {
-        showErrorDialog(context, "$tag'nin kutusu boş","-1");
-        return false;
-      }
-      if (str.contains('  ')) {
-        showErrorDialog(context, "$tag: boşluk kullanma","-1");
-        return false;
-      }
-
-      if (RegExp(r'[a-z]').hasMatch(str)) {
-        showErrorDialog(context, "$tag: küçük harf kullanma","-1");
-        return false;
-      }
-
-      return true;
-  }
-  bool validateNumber(String tag, String str) {
     if (str.isEmpty) {
-      showErrorDialog(context, "$tag'nin kutusu boş","-1");
+      StringHelper.showErrorDialog(context, "$tag'nin kutusu boş");
       return false;
     }
     if (str.contains('  ')) {
-      showErrorDialog(context, "$tag: boşluk kullanma","-1");
+      StringHelper.showErrorDialog(context, "$tag: boşluk kullanma");
       return false;
     }
 
-    if (!RegExp(r'^\d+$').hasMatch(str)) {
-      showErrorDialog(context, "$tag: Sadece numarayı yazın.","-1");
+    if (RegExp(r'[a-z]').hasMatch(str)) {
+      StringHelper.showErrorDialog(context, "$tag: küçük harf kullanma");
       return false;
     }
 
     return true;
   }
 
-
-  Future<void> saveEditCarInfo() async {
-
-    int i = 0;
-
-    print('isEditMode: $isEditMode');
-    if(isEditMode) {
-      if (_carId == null) {
-        setState(() {
-          _errorMessage = "Araç bilgisi yüklü değil.";
-        });
-        showErrorDialog(context, "_carId: Araç bilgisi yüklü değil.", "-1");
-        return;
-      }
+  bool validateNumber(String tag, String str) {
+    if (str.isEmpty) {
+      StringHelper.showErrorDialog(context, "$tag'nin kutusu boş");
+      return false;
+    }
+    if (str.contains('  ')) {
+      StringHelper.showErrorDialog(context, "$tag: boşluk kullanma");
+      return false;
     }
 
-    if(validateString(tag_labelText[0], chassisNoController.text) == false)return;
-    if(validateString(tag_labelText[1], motorNoController.text) == false)return;
-    if(validateString(tag_labelText[2], licensePlateNoController.text) == false)return;
-    if(validateString(tag_labelText[3], brandController.text) == false)return;
-    if(validateString(tag_labelText[4], modelController.text) == false)return;
-    if(validateString(tag_labelText[6], feulTypeController.text) == false)return;
-    if(validateNumber(tag_labelText[5], yearController.text) == false)return;
-
-    Map<String, dynamic> carData = {
-      "chassis_no": chassisNoController.text.toUpperCase(),
-      "motor_no": motorNoController.text.toUpperCase(),
-      "license_plate": licensePlateNoController.text.toUpperCase(),
-      "brand": brandController.text.toUpperCase(),
-      "brand_model": modelController.text.toUpperCase(),
-      "model_year": int.tryParse(yearController.text),
-      "fuel_type": feulTypeController.text.toUpperCase(),
-      "date_time": DateTime.now().toIso8601String()
-    };
-
-    ApiResponseDatabase response;
-    print("isEditMode: $isEditMode");
-    if(isEditMode){
-      print("isEditMode: 1");
-      response = await api.jobUpdateCarInfo(_carId!, carData);
-    }
-    else{
-      print("isEditMode: 2");
-      response = await api.jobPostCarInfo(carData);
+    if (!RegExp(r'^\d+$').hasMatch(str)) {
+      StringHelper.showErrorDialog(context, "$tag: Sadece numarayı yazın.");
+      return false;
     }
 
-    if (response.hasError) {
-      if(response.dbo_error != null)
-        showErrorDialog(context, response.dbo_error!.message, response.dbo_error!.error_code);
-      if(response.error != null)
-        showErrorDialog(context, response.error!.message, response.error!.statusCode.toString());
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            "Araç bilgileri güncellendi",
-            style: TextStyle(color: Colors.green),
-          ),
-        ),
-      );
-
-    }
+    return true;
   }
 
+  Future<void> saveEditCarInfo() async {
+    if (validateString(tag_labelText[0], chassisNoController.text) == false)
+      return;
+    if (validateString(tag_labelText[1], motorNoController.text) == false)
+      return;
+    if (validateString(tag_labelText[2], licensePlateNoController.text) ==
+        false)
+      return;
+    if (validateString(tag_labelText[3], brandController.text) == false) return;
+    if (validateString(tag_labelText[4], modelController.text) == false) return;
+    if (validateString(tag_labelText[6], fuelTypeController.text) == false)
+      return;
+    if (validateNumber(tag_labelText[5], yearController.text) == false) return;
+
+    final carInfo = CarInfo(
+      chassisNo: chassisNoController.text.toUpperCase(),
+      motorNo: motorNoController.text.toUpperCase(),
+      licensePlate: licensePlateNoController.text.toUpperCase(),
+      brand: brandController.text.trim(),
+      brandModel: modelController.text.toUpperCase(),
+      modelYear: int.tryParse(yearController.text),
+      fuelType: fuelTypeController.text.toUpperCase(),
+      dateTime: DateTime.now().toIso8601String(),
+    );
+
+    print("isEditMode: $isEditMode");
+    if (isEditMode) {
+      final updatedCar = CarInfo(
+        chassisNo: chassisNoController.text.trim(),
+        motorNo: motorNoController.text.trim(),
+        licensePlate: licensePlateNoController.text.trim(),
+        brand: brandController.text.trim(),
+        brandModel: modelController.text.trim(),
+        modelYear: int.tryParse(yearController.text.trim()),
+        fuelType: fuelTypeController.text,
+        dateTime: DateTime.now().toIso8601String(),
+      );
+
+      final ApiResponse response = await backend_services()
+          .updateCarInfoByLicensePlate(
+            licensePlateNoController.text.trim(),
+            updatedCar,
+          );
+      if (response.status != 'error') {
+        StringHelper.showInfoDialog(context, 'Düzenleme yapıldı');
+      } else {
+        StringHelper.showErrorDialog(context, '${response.message}');
+      }
+    } else {
+      final ApiResponse response = await backend_services().insertCarInfo(
+        carInfo,
+      );
+      if (response.status != 'error') {
+        StringHelper.showInfoDialog(context, 'başarılı');
+      } else {
+        StringHelper.showErrorDialog(context, '${response.message}');
+      }
+    }
+  }
 
   @override
   void initState() {
@@ -274,18 +290,13 @@ class _GetCarInfoPageState extends State<GetCarInfoPage> with SingleTickerProvid
     _slideAnimation = Tween<Offset>(
       begin: const Offset(0, 0.2),
       end: Offset.zero,
-    ).animate(CurvedAnimation(
-      parent: _controller,
-      curve: Curves.easeOut,
-    ));
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOut));
 
-    _fadeAnimation = CurvedAnimation(
-      parent: _controller,
-      curve: Curves.easeIn,
-    );
+    _fadeAnimation = CurvedAnimation(parent: _controller, curve: Curves.easeIn);
 
     _controller.forward();
   }
+
   @override
   void dispose() {
     // searchController.dispose();
@@ -299,7 +310,7 @@ class _GetCarInfoPageState extends State<GetCarInfoPage> with SingleTickerProvid
     brandController.dispose();
     modelController.dispose();
     yearController.dispose();
-    feulTypeController.dispose();
+    fuelTypeController.dispose();
     _controller.dispose();
     super.dispose();
   }
@@ -307,9 +318,7 @@ class _GetCarInfoPageState extends State<GetCarInfoPage> with SingleTickerProvid
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Kayıtlı Araçlar'),
-      ),
+      appBar: AppBar(title: const Text('Kayıtlı Araçlar')),
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: SlideTransition(
@@ -335,7 +344,7 @@ class _GetCarInfoPageState extends State<GetCarInfoPage> with SingleTickerProvid
                             brandController.clear();
                             modelController.clear();
                             yearController.clear();
-                            feulTypeController.clear();
+                            fuelTypeController.clear();
                           });
                         },
                       ),
@@ -355,7 +364,7 @@ class _GetCarInfoPageState extends State<GetCarInfoPage> with SingleTickerProvid
                             brandController.clear();
                             modelController.clear();
                             yearController.clear();
-                            feulTypeController.clear();
+                            fuelTypeController.clear();
                           });
                         },
                       ),
@@ -371,19 +380,27 @@ class _GetCarInfoPageState extends State<GetCarInfoPage> with SingleTickerProvid
                       border: OutlineInputBorder(),
                       labelText: selectedPlate,
                       hintText: 'Değerinizi girin',
+                      suffixIcon: IconButton(
+                        icon: Icon(Icons.search),
+                        onPressed: () {
+                          setState(() {
+                            _onPlateSelected();
+                            searchByPlate();
+                          });
+                        },
+                      ),
                     ),
                     onSubmitted: (val) {
                       setState(() {
                         _onPlateSelected();
                         searchByPlate();
-
                       });
                     },
                   ),
                   const SizedBox(height: 10),
                 ],
+
                 const SizedBox(height: 20),
-                // سایر TextField ها و ElevatedButton دقیقاً همون‌طور که قبل نوشتی 👇
                 TextField(
                   controller: chassisNoController,
                   decoration: InputDecoration(
@@ -440,7 +457,7 @@ class _GetCarInfoPageState extends State<GetCarInfoPage> with SingleTickerProvid
                 ),
                 const SizedBox(height: 10),
                 TextField(
-                  controller: feulTypeController,
+                  controller: fuelTypeController,
                   decoration: InputDecoration(
                     labelText: tag_labelText[6],
                     border: OutlineInputBorder(),
@@ -449,7 +466,7 @@ class _GetCarInfoPageState extends State<GetCarInfoPage> with SingleTickerProvid
                 ),
                 const SizedBox(height: 20),
                 ElevatedButton(
-                  onPressed:(){
+                  onPressed: () {
                     final info = {
                       tag_labelText[0]: chassisNoController.text,
                       tag_labelText[1]: motorNoController.text,
@@ -457,11 +474,13 @@ class _GetCarInfoPageState extends State<GetCarInfoPage> with SingleTickerProvid
                       tag_labelText[3]: brandController.text,
                       tag_labelText[4]: modelController.text,
                       tag_labelText[5]: yearController.text,
-                      tag_labelText[6]: feulTypeController.text,
+                      tag_labelText[6]: fuelTypeController.text,
                     };
                     saveEditCarInfo();
                   },
-                  child: Text(isEditMode ? 'Değişiklikleri Kaydet' : 'Yeni Araç Kaydet'),
+                  child: Text(
+                    isEditMode ? 'Değişiklikleri Kaydet' : 'Yeni Araç Kaydet',
+                  ),
                 ),
               ],
             ),
