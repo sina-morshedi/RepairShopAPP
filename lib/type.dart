@@ -497,13 +497,13 @@ class CarRepairLogWithID {
 }
 
 class CarRepairLog {
-  final int car_id;
-  final int creator_user_id;
-  final int? department_id;
-  final int? problem_report_id;
-  final int? car_required_departments_id;
+  final String car_id;
+  final String creator_user_id;
+  final String? department_id;
+  final String? problem_report_id;
+  final String? car_required_departments_id;
   final String? description;
-  final int task_status_id;
+  final String task_status_id;
   final String date_time;
 
   final carInfo? car_info;

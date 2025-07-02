@@ -61,6 +61,7 @@ dependencies:
   ffi: ^2.1.0
   mqtt_client: ^9.6.1
   eva_icons_flutter: ^3.0.0
+  flutter_svg: ^2.0.9
 
 
   # The following adds the Cupertino Icons font to your application.
@@ -80,6 +81,7 @@ flutter_icons:
   android: true
   ios: true
   image_path: "assets/icon/app_icon.png"
+
 
   # The "flutter_lints" package below contains a set of recommended lints to
   # encourage good coding practices. The lint set provided by the package is
@@ -102,6 +104,11 @@ flutter:
     - assets/images/ISBIR.png
     - assets/images/RBSN.jpg
     - assets/images/Logo.png
+    - assets/images/raster/
+    - assets/images/vector/
+    - assets/background.jpg
+    - assets/Welcome.jpg
+    - assets/images/raster/logo-1.png
 
   # To add assets to your application, add an assets section, like this:
   # assets:

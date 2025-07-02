@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'type.dart';
-import 'DTO/UserProfileDTO.dart';
+import '../type.dart';
+import '../DTO/UserProfileDTO.dart';
 
 class UserPrefs {
   static const String _generalConfig = 'general_Config';
@@ -47,7 +47,6 @@ class UserPrefs {
   static Future<void> saveUserWithID(UserProfileDTO user) async {
     final prefs = await SharedPreferences.getInstance();
     final userJson = jsonEncode(user.toJson());
-    print('userJson Save: $userJson');
     await prefs.setString(_userKey, userJson);
   }
 

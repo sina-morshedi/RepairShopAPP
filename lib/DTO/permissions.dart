@@ -14,6 +14,13 @@ class permissions {
     );
   }
 
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'permissionName': permissionName,
+    };
+  }
+
   @override
   String toString() {
     return 'id: $id, permissionName: $permissionName';

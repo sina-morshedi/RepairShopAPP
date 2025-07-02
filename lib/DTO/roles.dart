@@ -15,6 +15,12 @@ class roles {
     );
   }
 
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'roleName': roleName,
+    };
+  }
   @override
   String toString() {
     return 'id: $id, roleName: $roleName';

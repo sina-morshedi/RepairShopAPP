@@ -3,7 +3,7 @@ import 'dart:convert';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'dart:ui';
 import '../DataFiles.dart';
-import '../user_prefs.dart';
+import 'user_prefs.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:http/http.dart' as http;
 
@@ -278,21 +278,7 @@ class _LoginPageState extends State<LoginPage> {
               ),
             ),
             SizedBox(height: 15),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: _showIPPortDialog,
-                child: Text('Set Server IP'),
-              ),
-            ),
-            SizedBox(height: 15),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: _isScanServerButtonEnabled ? _loginToWebServer : null,
-                child: Text('Scan Server IP'),
-              ),
-            ),
+
             SizedBox(height: 30),
             Text(
               '© 2025 Sina Morshedi - v$_appVersion',

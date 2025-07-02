@@ -1,16 +1,19 @@
+import 'permissions.dart';
+import 'roles.dart';
+
 class users {
   final String username;
   final String firstName;
   final String lastName;
-  final String roleName;
-  final String permissionName;
+  final roles role;
+  final permissions permission;
 
   const users({
     required this.username,
     required this.firstName,
     required this.lastName,
-    required this.roleName,
-    required this.permissionName,
+    required this.role,
+    required this.permission,
   });
 
   factory users.fromJson(Map<String, dynamic> json) {
@@ -18,13 +21,8 @@ class users {
       username: json['username'] ?? '',
       firstName: json['firstName'] ?? '',
       lastName: json['lastName'] ?? '',
-      roleName: json['roleName'] ?? '',
-      permissionName: json['permissionName'] ?? '',
+      role: roles.fromJson(json['role'] ?? {}),
+      permission: permissions.fromJson(json['permission'] ?? {}),
     );
-  }
-
-  @override
-  String toString() {
-    return 'username: $username, firstName: $firstName, lastName: $lastName, roleName: $roleName, permissionName: $permissionName';
   }
 }

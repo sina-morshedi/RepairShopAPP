@@ -1,3 +1,4 @@
+import 'package:autonetwork/DTO/CarInfoDTO.dart';
 import 'package:flutter/material.dart';
 import '../dboAPI.dart';
 import '../type.dart';
@@ -101,11 +102,10 @@ class _GetCarInfoPageState extends State<GetCarInfoPage>
   }
 
   void searchByPlate() async {
-    final ApiResponse<CarInfo> response = await backend_services()
-        .getCarInfoByLicensePlate(searchController.text.trim());
-    if (response.status == 'successful' && response.data != null) {
+    final ApiResponse<CarInfoDTO> response = await backend_services()
+        .getCarInfoByLicensePlate(searchController.text.trim().toUpperCase());
+    if (response.status == 'success' && response.data != null) {
       final car = response.data!;
-
       setState(() {
         licensePlateNoController.text = car.licensePlate;
         chassisNoController.text = car.chassisNo;
@@ -122,46 +122,6 @@ class _GetCarInfoPageState extends State<GetCarInfoPage>
         response.message ?? 'Araç bulunamadı veya sunucu hatası',
       );
     }
-  }
-
-  void showErrorDialog(
-    BuildContext context,
-    String errorMessage,
-    String errorCode,
-  ) {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Row(
-          children: [
-            Icon(Icons.error_outline, color: Colors.red),
-            SizedBox(width: 8),
-            Text('HATA', style: TextStyle(color: Colors.red)),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(errorMessage),
-            SizedBox(height: 12),
-            Text(
-              'HATA KODU: $errorCode',
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                color: Colors.grey[700],
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: Text('OK'),
-          ),
-        ],
-      ),
-    );
   }
 
   bool validateString(String tag, String str) {
@@ -225,22 +185,21 @@ class _GetCarInfoPageState extends State<GetCarInfoPage>
       dateTime: DateTime.now().toIso8601String(),
     );
 
-    print("isEditMode: $isEditMode");
     if (isEditMode) {
       final updatedCar = CarInfo(
-        chassisNo: chassisNoController.text.trim(),
-        motorNo: motorNoController.text.trim(),
-        licensePlate: licensePlateNoController.text.trim(),
-        brand: brandController.text.trim(),
-        brandModel: modelController.text.trim(),
-        modelYear: int.tryParse(yearController.text.trim()),
-        fuelType: fuelTypeController.text,
+        chassisNo: chassisNoController.text.trim().toUpperCase(),
+        motorNo: motorNoController.text.trim().toUpperCase(),
+        licensePlate: licensePlateNoController.text.trim().toUpperCase(),
+        brand: brandController.text.trim().toUpperCase(),
+        brandModel: modelController.text.trim().toUpperCase(),
+        modelYear: int.tryParse(yearController.text.trim().toUpperCase()),
+        fuelType: fuelTypeController.text.trim().toUpperCase(),
         dateTime: DateTime.now().toIso8601String(),
       );
 
       final ApiResponse response = await backend_services()
           .updateCarInfoByLicensePlate(
-            licensePlateNoController.text.trim(),
+            licensePlateNoController.text.trim().toUpperCase(),
             updatedCar,
           );
       if (response.status != 'error') {

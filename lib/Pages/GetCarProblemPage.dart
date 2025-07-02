@@ -1,13 +1,21 @@
 import 'dart:ui';
-import 'dart:ffi' as ffi;
 import 'package:autonetwork/Common.dart';
+import 'package:autonetwork/DTO/CarInfoDTO.dart';
+import 'package:autonetwork/DTO/CarRepairLogResponseDTO.dart';
+import 'package:autonetwork/DTO/CarRepairLogRequestDTO.dart';
+import 'package:autonetwork/DTO/CarProblemReportRequestDTO.dart';
 import 'package:autonetwork/GetCarInfoApp.dart';
 import 'package:flutter/material.dart';
 import '../dboAPI.dart';
 import '../type.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
-import '../user_prefs.dart';
+import 'user_prefs.dart';
 import 'package:autonetwork/DTO/UserProfileDTO.dart';
+import 'Components/ShareComponents.dart';
+import 'Components/CarRepairedLogCard.dart';
+import '../backend_services/backend_services.dart';
+import 'package:autonetwork/Pages/Components/helpers/app_helpers.dart';
+import 'user_prefs.dart';
 
 class GetCarProblemPage extends StatefulWidget {
   const GetCarProblemPage({super.key});
@@ -19,10 +27,9 @@ class GetCarProblemPage extends StatefulWidget {
 class _GetCarProblemPageState extends State<GetCarProblemPage>
     with SingleTickerProviderStateMixin {
   final plateController = TextEditingController();
-  final problemController = TextEditingController();
   Map<String, dynamic>? carData;
-  carInfoFromDb?car;
-  int? car_id;
+  CarRepairLogResponseDTO? carLog;
+  String? car_id;
 
   late stt.SpeechToText speech;
   bool _isListening = false;
@@ -67,7 +74,7 @@ class _GetCarProblemPageState extends State<GetCarProblemPage>
     speech.stop();
     _controller.dispose();
     plateController.dispose();
-    problemController.dispose();
+    _controllerProblemText.dispose();
     super.dispose();
   }
 
@@ -134,29 +141,103 @@ class _GetCarProblemPageState extends State<GetCarProblemPage>
   }
 
   void searchPlate() async{
-    car = await CarInfoUtility.searchByPlate(
-        context,
-        CarInfoUtility.tag_labelText[tag_index.license_plate.index],
-        plateController.text);
+    final response = await CarRepairLogApi().getLatestLogByLicensePlate(plateController.text.toUpperCase());
 
-    setState(() {
-      if(car != null) {
-        car_id = car!.car_id;
-        carData = {
-          'plaka': plateController.text,
-          'marka': '${car!.brand}',
-          'model': '${car!.brand_model}',
-          'yıl': '${car!.model_year}',
-        };
+    if(response.status == 'success') {
+      setState(() {
+        carLog = response.data;
         isResultEnabled = true;
-      }
-    });
+        if(carLog!.taskStatus.taskStatusName == 'GİRMEK')
+          isEnabled = true;
+        else
+          isEnabled = false;
+      });
+    }
   }
 
-  void saveProblem() {
-    final text = problemController.text;
-    print("Problem saved: $text");
-    // Your save logic here
+  // void saveProblem() async{
+  //   final text = problemController.text;
+  //   final report = CarProblemReportRequestDTO(
+  //     carId: carLog!.carInfo.id,
+  //     creatorUserId: 'user789',
+  //     problemSummary: 'Motor ısınma problemi',
+  //     dateTime: DateTime.now(),
+  //   );
+  //
+  //   final response = await CarProblemReportApi().createReport(report);
+  // }
+  void saveProblem() async {
+    if (carInfo == null) return;
+
+    final problemText = _controllerProblemText.text.trim();
+    if (problemText.isEmpty) {
+      StringHelper.showErrorDialog(context, "Lütfen problemi giriniz");
+      return;
+    }
+
+    final user = await UserPrefs.getUserWithID();
+    if(user == null){
+      StringHelper.showErrorDialog(context, 'kullanıcı bilgiye bulamadım.');
+      return;
+    }
+
+    // Create problem report DTO
+    final reportDTO = CarProblemReportRequestDTO(
+      carId: carLog!.carInfo.id,
+      creatorUserId: user!.userId,
+      problemSummary: problemText,
+      dateTime: DateTime.now(),
+    );
+
+    // Save problem report
+    final saveResponse = await CarProblemReportApi().createReport(reportDTO);
+
+    if (saveResponse.status == 'success' && saveResponse.data != null) {
+      _controllerProblemText.clear();
+
+      // Now create a CarRepairLog based on saved problem report
+      final createdProblemReport = saveResponse.data!;
+
+
+      final taskStatus  = await TaskStatusApi().getTaskStatusByName('SORUN GİDERME');
+      if(taskStatus.status != 'success') {
+        StringHelper.showErrorDialog(
+            context, 'Task Status Respone: ${taskStatus.message!}');
+        return;
+      }
+      if (taskStatus.status == 'success' && taskStatus.data != null) {
+
+        final logRequest = CarRepairLogRequestDTO(
+          carId: createdProblemReport.carId,
+          creatorUserId: user.userId,
+          description: '',
+          taskStatusId: taskStatus.data!.id!,
+          dateTime: DateTime.now(),
+          problemReportId: createdProblemReport.id,
+        );
+
+        final logResponse = await CarRepairLogApi().createLog(logRequest);
+
+        if (logResponse.status == 'success') {
+          StringHelper.showInfoDialog(
+              context,"CarRepairLog başarıyla oluşturuldu.");
+        } else {
+          StringHelper.showErrorDialog(
+              context,"CarRepairLog oluşturulamadı: ${logResponse.message}");
+        }
+      } else {
+        StringHelper.showErrorDialog(
+            context,"TaskStatus not found or error: ${taskStatus.message}");
+      }
+
+
+    } else {
+      // Show error if saving problem report failed
+      StringHelper.showErrorDialog(
+          context,
+          "Problem raporu kaydedilirken hata oluştu: ${saveResponse.message}"
+      );
+    }
   }
 
   void _resetPage() {
@@ -176,31 +257,13 @@ class _GetCarProblemPageState extends State<GetCarProblemPage>
   void showRepairDialog() async{
     dboAPI api = dboAPI();
     UserProfileDTO? user = await UserPrefs.getUserWithID();
-    print(user!.toJson());
-    List<TaskStatus?> task = await UserPrefs.getTaskStatus();
-    int task_id = CarInfoUtility.GetTaskID(task, 'START');
 
-    final result = await CarInfoUtility.showRepairDialog(context, car!.toPrettyString());
-
-    // var response = await api.jobPostProblemReport(carData);
-
-    setState(() {
-      if (result == true) {
-        CarRepairLog log = CarRepairLog(
-            car_id: car_id!,
-            creator_user_id: 1,
-            department_id: null,
-            problem_report_id: null,
-            car_required_departments_id: null,
-            description: null,
-            task_status_id: task_id,
-            date_time: DateTime.now().toIso8601String());
-         api.jobPostCarRepairLog(log.toJson());
+    final result = await Sharecomponents.showRepairDialog(context, carLog!.carInfo);
+    if(result == true){
+      setState(() {
         isEnabled = true;
-      } else {
-        isEnabled = false;
-      }
-    });
+      });
+    }
   }
   @override
   Widget build(BuildContext context) {
@@ -233,16 +296,7 @@ class _GetCarProblemPageState extends State<GetCarProblemPage>
                     ),
                     const SizedBox(height: 20),
                     if (isResultEnabled) ...[
-                      Card(
-                        child: ListTile(
-                          title: Text(carData!['plaka']),
-                          subtitle: Text(
-                              "${carData!['marka']} - ${carData!['model']} (${carData!['yıl']})"),
-                          onTap: () {
-                              showRepairDialog();
-                              },
-                        ),
-                      ),
+                      CarRepairedLogCard(log: carLog!),
 
                       const SizedBox(height: 20),
                       isEnabled

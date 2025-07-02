@@ -2,14 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:water_drop_nav_bar/water_drop_nav_bar.dart';
 import 'dboAPI.dart';
 import 'DataFiles.dart';
-import 'user_prefs.dart';
+import 'Pages/user_prefs.dart';
 import 'package:bcrypt/bcrypt.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'dart:ui';
-import 'dart:ffi' as ffi;
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 
