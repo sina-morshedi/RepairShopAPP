@@ -1,3 +1,7 @@
+import 'package:autonetwork/DTO/TaskStatusDTO.dart';
+import 'package:autonetwork/Pages/Components/helpers/app_helpers.dart';
+import 'package:autonetwork/Pages/user_prefs.dart';
+import 'package:autonetwork/backend_services/backend_services.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import '../../DTO/CarRepairLogRequestDTO.dart';
@@ -15,10 +19,23 @@ class CarRepairedLogCard extends StatelessWidget {
     'ÜSTA': 'assets/images/vector/repairman.svg',
     'BAŞLANGIÇ': 'assets/images/vector/play.svg',
     'DURAKLAT': 'assets/images/vector/pause.svg',
-    'SON': 'assets/images/vector/finish-flag.svg',
+    'İŞ BİTTİ': 'assets/images/vector/finish-flag.svg',
   };
 
-  void _showLogDetails(BuildContext context, CarRepairLogResponseDTO log) {
+  void _showLogDetails(BuildContext context, CarRepairLogResponseDTO log) async{
+    bool showAcceptButton = log.taskStatus.taskStatusName == "ÜSTA";
+    final user = await UserPrefs.getUserWithID();
+
+    final taskStatusLog = await TaskStatusApi().getTaskStatusByName('BAŞLANGIÇ');
+    TaskStatusDTO? taskStatus;
+    if(taskStatusLog.status == 'success')
+      taskStatus = taskStatusLog.data;
+    else{
+      StringHelper.showErrorDialog(context, taskStatusLog.message!);
+
+      return;
+    }
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -39,19 +56,43 @@ class CarRepairedLogCard extends StatelessWidget {
               SelectableText('Sorumlu çalışan: ${log.assignedUser?.firstName ?? "-"} ${log.assignedUser?.lastName ?? "-"}'),
               SelectableText('Tarih: ${log.dateTime?.toString() ?? "-"}'),
               SelectableText('\nAraç şikayeti: ${log.problemReport?.problemSummary ?? "-"}'),
-              // Buraya göstermek istediğin diğer bilgileri ekleyebilirsin
             ],
           ),
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.of(context).pop(),
+            onPressed: (){
+
+              Navigator.of(context).pop();
+              },
             child: const Text('Kapat'),
           ),
+          if (showAcceptButton)
+            TextButton(
+              onPressed: () async{
+                CarRepairLogRequestDTO request = CarRepairLogRequestDTO(
+                  carId: log.carInfo.id,
+                  creatorUserId: user!.userId,
+                  assignedUserId: log.assignedUser!.userId,
+                  description: '',
+                  taskStatusId: taskStatus!.id!,
+                  dateTime: DateTime.now(),
+                  problemReportId: log.problemReport!.id,
+                );
+
+                final requestLog = await CarRepairLogApi().createLog(request);
+                if(requestLog.status != 'success')
+                  StringHelper.showErrorDialog(context, requestLog.message!);
+
+                Navigator.of(context).pop();
+              },
+              child: const Text('işe başlıyorum'),
+            ),
         ],
       ),
     );
   }
+
 
   @override
   Widget build(BuildContext context) {

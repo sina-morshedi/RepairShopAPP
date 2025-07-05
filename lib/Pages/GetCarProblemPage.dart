@@ -4,6 +4,7 @@ import 'package:autonetwork/DTO/CarInfoDTO.dart';
 import 'package:autonetwork/DTO/CarRepairLogResponseDTO.dart';
 import 'package:autonetwork/DTO/CarRepairLogRequestDTO.dart';
 import 'package:autonetwork/DTO/CarProblemReportRequestDTO.dart';
+import 'package:autonetwork/DTO/TaskStatusDTO.dart';
 import 'package:autonetwork/GetCarInfoApp.dart';
 import 'package:flutter/material.dart';
 import '../dboAPI.dart';
@@ -141,31 +142,71 @@ class _GetCarProblemPageState extends State<GetCarProblemPage>
   }
 
   void searchPlate() async{
-    final response = await CarRepairLogApi().getLatestLogByLicensePlate(plateController.text.toUpperCase());
+    final response = await backend_services().getCarInfoByLicensePlate(plateController.text.toUpperCase());
 
-    if(response.status == 'success') {
-      setState(() {
-        carLog = response.data;
-        isResultEnabled = true;
-        if(carLog!.taskStatus.taskStatusName == 'GİRMEK')
-          isEnabled = true;
+    if(response.status == 'success'){
+      final response = await CarRepairLogApi().getLatestLogByLicensePlate(plateController.text.toUpperCase());
+
+      if(response.status == 'success') {
+        setState(() {
+          carLog = response.data;
+          isResultEnabled = true;
+          if(carLog!.taskStatus.taskStatusName == 'GİRMEK')
+            isEnabled = true;
+          else
+            isEnabled = false;
+        });
+      }
+      else {
+        await StringHelper.showErrorDialog(context, response.message!);
+        final confirm = await StringHelper.showConfirmationDialog(context, 'Araç girişini şimdi mi kaydetmek istiyorsunuz?');
+        if(confirm == true){
+          _CarEntry();
+        }
+
+      }
+    }
+    else
+      StringHelper.showErrorDialog(context, response.message!);
+
+  }
+  void _CarEntry() async{
+    TaskStatusDTO? taskStatusLog;
+    final user = await UserPrefs.getUserWithID();
+    final taskStatus  = await TaskStatusApi().getTaskStatusByName('GİRMEK');
+    if(taskStatus.status == 'success')
+        taskStatusLog = taskStatus.data;
+    else {
+      StringHelper.showErrorDialog(
+          context, 'Task Status Respone: ${taskStatus.message!}');
+      return;
+    }
+
+    final carResponse = await backend_services().getCarInfoByLicensePlate(plateController.text.toUpperCase());
+    if(carResponse.status == 'success') {
+      final selectedCar = carResponse.data;
+      if (selectedCar != null) {
+        final logRequest = CarRepairLogRequestDTO(
+          carId: selectedCar!.id,
+          creatorUserId: user!.userId,
+          description: '',
+          taskStatusId: taskStatusLog!.id!,
+          dateTime: DateTime.now(),
+          problemReportId: null,
+        );
+
+        final response = await CarRepairLogApi().createLog(logRequest);
+
+        if(response.status == 'success' && response.data != null)
+          StringHelper.showInfoDialog(context, 'Araba girişi kaydedildi');
         else
-          isEnabled = false;
-      });
+          StringHelper.showErrorDialog(context, 'Creat Log: ${response.message!}');
+      }
+      else
+        StringHelper.showErrorDialog(context, carResponse.message!);
     }
   }
 
-  // void saveProblem() async{
-  //   final text = problemController.text;
-  //   final report = CarProblemReportRequestDTO(
-  //     carId: carLog!.carInfo.id,
-  //     creatorUserId: 'user789',
-  //     problemSummary: 'Motor ısınma problemi',
-  //     dateTime: DateTime.now(),
-  //   );
-  //
-  //   final response = await CarProblemReportApi().createReport(report);
-  // }
   void saveProblem() async {
     if (carInfo == null) return;
 

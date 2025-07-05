@@ -2,13 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:water_drop_nav_bar/water_drop_nav_bar.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-
 import 'GetCarInfoPage.dart';
 import 'GetCarProblemPage.dart';
 
 import 'LoginPage.dart';
 import 'UserProfilePage.dart';
-import 'RegisterNewJobPage.dart';
+import 'WorkespacePage.dart';
 
 class MainMenuPage extends StatefulWidget {
   const MainMenuPage({super.key});
@@ -21,42 +20,29 @@ class _MainMenuPageState extends State<MainMenuPage> {
   int _selectedIndex = 0;
   late PageController _pageController;
 
-  final List<Widget> _pages = const [
-    UserProfilePage(),
-    GetCarInfoPage(),
-    GetCarProblemPage(),
-    RegisterNewJobPage(),
-  ];
+  final GlobalKey<UserProfilePageState> _userProfileKey = GlobalKey<UserProfilePageState>();
 
-  void _onItemTapped(int index) {
-    setState(() {
-      _selectedIndex = index;
-    });
-    _pageController.animateToPage(
-      index,
-      duration: const Duration(milliseconds: 400),
-      curve: Curves.easeOutQuad,
-    );
-  }
+  late final List<Widget> _pages;
 
   @override
   void initState() {
     super.initState();
     _pageController = PageController(initialPage: _selectedIndex);
-
-    // _loadAppVersion();
     _checkLoginStatus();
+
+    _pages = [
+      UserProfilePage(key: _userProfileKey),
+      const GetCarInfoPage(),
+      const GetCarProblemPage(),
+      WorkespacePage(),
+    ];
   }
 
   void _checkLoginStatus() async {
     final prefs = await SharedPreferences.getInstance();
     final timestamp = prefs.getInt('loginTimestamp');
-    //TODO For Login
     if (timestamp == null ||
-        DateTime.now()
-            .difference(DateTime.fromMillisecondsSinceEpoch(timestamp))
-            .inHours >=
-            20) {
+        DateTime.now().difference(DateTime.fromMillisecondsSinceEpoch(timestamp)).inHours >= 20) {
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (context) => const LoginPage()),
@@ -83,7 +69,7 @@ class _MainMenuPageState extends State<MainMenuPage> {
               onPressed: () async {
                 Navigator.pushAndRemoveUntil(
                   context,
-                  MaterialPageRoute(builder: (context) => LoginPage()),
+                  MaterialPageRoute(builder: (context) => const LoginPage()),
                       (route) => false,
                 );
               },
@@ -97,6 +83,9 @@ class _MainMenuPageState extends State<MainMenuPage> {
           setState(() {
             _selectedIndex = index;
           });
+          if (index == 0) {
+            _userProfileKey.currentState?.reloadUserData();
+          }
         },
         children: _pages,
       ),
@@ -113,6 +102,9 @@ class _MainMenuPageState extends State<MainMenuPage> {
             duration: const Duration(milliseconds: 400),
             curve: Curves.easeOutQuad,
           );
+          if (index == 0) {
+            _userProfileKey.currentState?.reloadUserData();
+          }
         },
         barItems: [
           BarItem(filledIcon: Icons.person, outlinedIcon: Icons.person_outline),
@@ -123,5 +115,4 @@ class _MainMenuPageState extends State<MainMenuPage> {
       ),
     );
   }
-
 }

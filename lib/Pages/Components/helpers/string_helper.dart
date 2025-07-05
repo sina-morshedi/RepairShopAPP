@@ -50,19 +50,16 @@ class StringHelper {
     );
   }
 
-  static void showErrorDialog(BuildContext context, String errorMessage) {
-    showDialog(
+  static Future<void> showErrorDialog(BuildContext context, String errorMessage) {
+    return showDialog(
       context: context,
       builder: (context) {
         return AlertDialog(
           title: Row(
             children: [
-              Icon(EvaIcons.alertTriangle, color: Colors.red), // Eva error icon
+              Icon(EvaIcons.alertTriangle, color: Colors.red),
               SizedBox(width: 8),
-              Text(
-                'Hata:',
-                style: TextStyle(fontWeight: FontWeight.bold),
-              ),
+              Text('Hata:', style: TextStyle(fontWeight: FontWeight.bold)),
             ],
           ),
           content: Text(errorMessage),
@@ -76,6 +73,7 @@ class StringHelper {
       },
     );
   }
+
 
   static void showInfoDialog(BuildContext context, String errorMessage) {
     showDialog(
@@ -102,4 +100,36 @@ class StringHelper {
       },
     );
   }
+
+  static Future<bool> showConfirmationDialog(BuildContext context, String question) async {
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Row(
+            children: [
+              Icon(EvaIcons.questionMarkCircle, color: Colors.orange),
+              SizedBox(width: 8),
+              Text('Soru:', style: TextStyle(fontWeight: FontWeight.bold)),
+            ],
+          ),
+          content: Text(question),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false), // رد کردن
+              child: Text('Red'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(true), // قبول کردن
+              child: Text('Kabul Ediyorum'),
+            ),
+          ],
+        );
+      },
+    );
+
+    // اگر کاربر دایالوگ را بست (مثلاً دکمه بک زد)، مقدار false برمی‌گردانیم
+    return result ?? false;
+  }
+
 }

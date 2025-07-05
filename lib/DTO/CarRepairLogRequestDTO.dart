@@ -1,11 +1,14 @@
+import 'PartUsed.dart'; // اگه PartUsed توی فایل جداست، اینو وارد کن
+
 class CarRepairLogRequestDTO {
   final String carId;
   final String creatorUserId;
-  final String? assignedUserId;  // فیلد جدید
+  final String? assignedUserId; // فیلد جدید
   final String? description;
   final String taskStatusId;
   final DateTime dateTime;
   final String? problemReportId;
+  final List<PartUsed>? partsUsed; // ← اضافه شده
 
   CarRepairLogRequestDTO({
     required this.carId,
@@ -15,17 +18,23 @@ class CarRepairLogRequestDTO {
     required this.taskStatusId,
     required this.dateTime,
     this.problemReportId,
+    this.partsUsed, // ← اضافه شده
   });
 
   factory CarRepairLogRequestDTO.fromJson(Map<String, dynamic> json) {
     return CarRepairLogRequestDTO(
       carId: json['carId'],
       creatorUserId: json['creatorUserId'],
-      assignedUserId: json['assignedUserId'],  // اضافه شده
+      assignedUserId: json['assignedUserId'],
       description: json['description'],
       taskStatusId: json['taskStatusId'],
       dateTime: DateTime.parse(json['dateTime']),
       problemReportId: json['problemReportId'],
+      partsUsed: json['partsUsed'] != null
+          ? (json['partsUsed'] as List)
+          .map((item) => PartUsed.fromJson(item))
+          .toList()
+          : null,
     );
   }
 
@@ -33,11 +42,13 @@ class CarRepairLogRequestDTO {
     return {
       'carId': carId,
       'creatorUserId': creatorUserId,
-      if (assignedUserId != null) 'assignedUserId': assignedUserId, // اضافه شده
+      if (assignedUserId != null) 'assignedUserId': assignedUserId,
       if (description != null) 'description': description,
       'taskStatusId': taskStatusId,
       'dateTime': dateTime.toIso8601String(),
       if (problemReportId != null) 'problemReportId': problemReportId,
+      if (partsUsed != null)
+        'partsUsed': partsUsed!.map((e) => e.toJson()).toList(),
     };
   }
 
@@ -50,8 +61,8 @@ class CarRepairLogRequestDTO {
         'description: $description, '
         'taskStatusId: $taskStatusId, '
         'dateTime: $dateTime, '
-        'problemReportId: $problemReportId'
+        'problemReportId: $problemReportId, '
+        'partsUsed: $partsUsed'
         ')';
   }
-
 }

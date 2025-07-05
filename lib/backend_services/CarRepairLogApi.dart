@@ -89,6 +89,34 @@ class CarRepairLogApi {
     }
 
   }
+  Future<ApiResponse<CarRepairLogResponseDTO>> getLogByid(String id) async {
+    final String backendUrl = '${ApiEndpoints.carRepairLogGetById}/$id';
+
+    try {
+      final response = await http.get(Uri.parse(backendUrl));
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final Map<String, dynamic> decoded = jsonDecode(response.body);
+
+        final log = CarRepairLogResponseDTO.fromJson(decoded);
+        return ApiResponse(
+          status: 'success',
+          data: log,
+        );
+      } else {
+        return ApiResponse(
+          status: 'error',
+          message: response.body,
+        );
+      }
+    } catch (e, stack) {
+      return ApiResponse(
+        status: 'error',
+        message: 'Exception occurred: $e',
+      );
+    }
+
+  }
 
   Future<ApiResponse<List<CarRepairLogResponseDTO>>> getLatestLogByTaskStatusName(String taskStatusName) async {
     final encodedStatusName = Uri.encodeComponent(taskStatusName);
@@ -122,7 +150,45 @@ class CarRepairLogApi {
     }
   }
 
+  Future<ApiResponse<List<CarRepairLogResponseDTO>>> getLatestLogsByTaskStatusesAndUserId(
+      TaskStatusUserRequestDTO request) async {
+    final String backendUrl = ApiEndpoints.carRepairLogLatestGetByTaskStatusNameAndAssignedToUserId;
 
+    final requestBody = request.toJson();
+
+    try {
+      final response = await http.post(
+        Uri.parse(backendUrl),
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: jsonEncode(requestBody),
+      );
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final List<dynamic> decodedList = jsonDecode(response.body);
+
+        final List<CarRepairLogResponseDTO> logs = decodedList
+            .map((jsonItem) => CarRepairLogResponseDTO.fromJson(jsonItem))
+            .toList();
+
+        return ApiResponse(
+          status: 'success',
+          data: logs,
+        );
+      } else {
+        return ApiResponse(
+          status: 'error',
+          message: response.body,
+        );
+      }
+    } catch (e) {
+      return ApiResponse(
+        status: 'error',
+        message: 'Exception occurred: $e',
+      );
+    }
+  }
 
   // Create a new log: sends RequestDTO, receives ResponseDTO
   Future<ApiResponse<CarRepairLogResponseDTO>> createLog(CarRepairLogRequestDTO request) async {
@@ -168,12 +234,9 @@ class CarRepairLogApi {
       );
 
       if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        final updatedLog = CarRepairLogResponseDTO.fromJson(data);
-
         return ApiResponse(
           status: 'success',
-          data: updatedLog,
+          message: response.body,
         );
       } else {
         return ApiResponse(

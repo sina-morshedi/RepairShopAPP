@@ -11,15 +11,17 @@ import '../backend_services/backend_services.dart';
 
 import 'package:autonetwork/utils/string_helper.dart';
 import 'package:autonetwork/DTO/UserProfileDTO.dart';
+import 'package:autonetwork/DTO/CarRepairLogRequestDTO.dart';
+import 'package:autonetwork/DTO/TaskStatusUserRequestDTO.dart';
 
 class UserProfilePage extends StatefulWidget {
   const UserProfilePage({super.key});
 
   @override
-  State<UserProfilePage> createState() => _UserProfilePageState();
+  State<UserProfilePage> createState() => UserProfilePageState();
 }
 
-class _UserProfilePageState extends State<UserProfilePage>
+class UserProfilePageState extends State<UserProfilePage>
     with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<Offset> _slideAnimation;
@@ -30,7 +32,9 @@ class _UserProfilePageState extends State<UserProfilePage>
   String last_name = '';
   String role_name = '';
 
-  User? _user;
+  void reloadUserData() {
+    _loadUser();
+  }
 
   @override
   void initState() {
@@ -71,7 +75,11 @@ class _UserProfilePageState extends State<UserProfilePage>
     } else {
       debugPrint("user or one of its nested fields is null");
     }
-    final response = await CarRepairLogApi().getLatestLogForEachCarAssignedToUserId(user!.userId);
+    final request = TaskStatusUserRequestDTO(
+      assignedUserId: user!.userId,
+      taskStatusNames: ["BAŞLANGIÇ", "DURAKLAT", "ÜSTA"],
+    );
+    final response = await CarRepairLogApi().getLatestLogsByTaskStatusesAndUserId(request);
     if(response.status == 'success'){
       setState(() {
         logs = response.data!;
