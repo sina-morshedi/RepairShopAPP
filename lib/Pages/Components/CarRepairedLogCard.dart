@@ -20,11 +20,15 @@ class CarRepairedLogCard extends StatelessWidget {
     'BAŞLANGIÇ': 'assets/images/vector/play.svg',
     'DURAKLAT': 'assets/images/vector/pause.svg',
     'İŞ BİTTİ': 'assets/images/vector/finish-flag.svg',
+    'FATURA': 'assets/images/vector/bill.svg',
   };
 
   void _showLogDetails(BuildContext context, CarRepairLogResponseDTO log) async{
-    bool showAcceptButton = log.taskStatus.taskStatusName == "ÜSTA";
+    bool showAcceptButton = false;
     final user = await UserPrefs.getUserWithID();
+
+    if(log.assignedUser!.username == user!.username!)
+      showAcceptButton = log.taskStatus.taskStatusName == "ÜSTA";
 
     final taskStatusLog = await TaskStatusApi().getTaskStatusByName('BAŞLANGIÇ');
     TaskStatusDTO? taskStatus;
@@ -56,6 +60,18 @@ class CarRepairedLogCard extends StatelessWidget {
               SelectableText('Sorumlu çalışan: ${log.assignedUser?.firstName ?? "-"} ${log.assignedUser?.lastName ?? "-"}'),
               SelectableText('Tarih: ${log.dateTime?.toString() ?? "-"}'),
               SelectableText('\nAraç şikayeti: ${log.problemReport?.problemSummary ?? "-"}'),
+              const SizedBox(height: 12),
+              if (log.description != null && log.description!.isNotEmpty && log.taskStatus.taskStatusName == 'DURAKLAT') ...[
+                const Text('Görev duraklama sebebi:', style: TextStyle(fontWeight: FontWeight.bold)),
+                const SizedBox(height: 4),
+                Text('- ${log.description}'),
+              ],
+              const SizedBox(height: 12),
+              if (log.partsUsed != null && log.partsUsed!.isNotEmpty) ...[
+                const Text('Kullanılan Parçalar:', style: TextStyle(fontWeight: FontWeight.bold)),
+                const SizedBox(height: 4),
+                ...log.partsUsed!.map((part) => Text('- ${part.partName} (${part.quantity})')).toList(),
+              ]
             ],
           ),
         ),

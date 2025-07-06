@@ -348,7 +348,6 @@ class _GetCarInfoPageState extends State<GetCarInfoPage>
                   ),
                   const SizedBox(height: 10),
                 ],
-
                 const SizedBox(height: 20),
                 TextField(
                   controller: chassisNoController,
@@ -356,6 +355,7 @@ class _GetCarInfoPageState extends State<GetCarInfoPage>
                     labelText: tag_labelText[0],
                     border: OutlineInputBorder(),
                   ),
+                  textCapitalization: TextCapitalization.characters,
                   enabled: canEdit,
                 ),
                 const SizedBox(height: 10),
@@ -365,6 +365,7 @@ class _GetCarInfoPageState extends State<GetCarInfoPage>
                     labelText: tag_labelText[1],
                     border: OutlineInputBorder(),
                   ),
+                  textCapitalization: TextCapitalization.characters,
                   enabled: canEdit,
                 ),
                 const SizedBox(height: 10),
@@ -374,7 +375,8 @@ class _GetCarInfoPageState extends State<GetCarInfoPage>
                     labelText: tag_labelText[2],
                     border: OutlineInputBorder(),
                   ),
-                  keyboardType: TextInputType.number,
+                  keyboardType: TextInputType.text,
+                  textCapitalization: TextCapitalization.characters,
                   enabled: canEdit,
                 ),
                 const SizedBox(height: 10),
@@ -384,6 +386,7 @@ class _GetCarInfoPageState extends State<GetCarInfoPage>
                     labelText: tag_labelText[3],
                     border: OutlineInputBorder(),
                   ),
+                  textCapitalization: TextCapitalization.characters,
                   enabled: canEdit,
                 ),
                 const SizedBox(height: 10),
@@ -393,6 +396,7 @@ class _GetCarInfoPageState extends State<GetCarInfoPage>
                     labelText: tag_labelText[4],
                     border: OutlineInputBorder(),
                   ),
+                  textCapitalization: TextCapitalization.characters,
                   enabled: canEdit,
                 ),
                 const SizedBox(height: 10),
@@ -402,6 +406,8 @@ class _GetCarInfoPageState extends State<GetCarInfoPage>
                     labelText: tag_labelText[5],
                     border: OutlineInputBorder(),
                   ),
+                  keyboardType: TextInputType.number,
+                  textCapitalization: TextCapitalization.characters,
                   enabled: canEdit,
                 ),
                 const SizedBox(height: 10),
@@ -411,6 +417,7 @@ class _GetCarInfoPageState extends State<GetCarInfoPage>
                     labelText: tag_labelText[6],
                     border: OutlineInputBorder(),
                   ),
+                  textCapitalization: TextCapitalization.characters,
                   enabled: canEdit,
                 ),
                 const SizedBox(height: 20),
@@ -429,4 +436,5 @@ class _GetCarInfoPageState extends State<GetCarInfoPage>
       ),
     );
   }
+
 }

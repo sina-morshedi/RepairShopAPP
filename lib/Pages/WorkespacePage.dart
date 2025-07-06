@@ -24,6 +24,7 @@ class _WorkespacePageState extends State<WorkespacePage> {
     'BAŞLANGIÇ': 'assets/images/vector/play.svg',
     'DURAKLAT': 'assets/images/vector/pause.svg',
     'İŞ BİTTİ': 'assets/images/vector/finish-flag.svg',
+    'FATURA': 'assets/images/vector/bill.svg',
   };
 
   List<Map<String, dynamic>> cars = [];

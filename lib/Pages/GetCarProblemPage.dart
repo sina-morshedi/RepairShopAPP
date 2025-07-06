@@ -37,6 +37,7 @@ class _GetCarProblemPageState extends State<GetCarProblemPage>
   bool _shouldContinueListening = false;
   int _activeField = 0;
   bool isEnabled = false;
+  bool needUpdate = false;
   bool isResultEnabled = false;
   TextEditingController _controllerProblemText = TextEditingController();
 
@@ -47,7 +48,7 @@ class _GetCarProblemPageState extends State<GetCarProblemPage>
   @override
   void initState() {
     super.initState();
-
+    needUpdate = false;
     _controller = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 700),
@@ -142,6 +143,8 @@ class _GetCarProblemPageState extends State<GetCarProblemPage>
   }
 
   void searchPlate() async{
+    isEnabled = false;
+    needUpdate = false;
     final response = await backend_services().getCarInfoByLicensePlate(plateController.text.toUpperCase());
 
     if(response.status == 'success'){
@@ -151,8 +154,15 @@ class _GetCarProblemPageState extends State<GetCarProblemPage>
         setState(() {
           carLog = response.data;
           isResultEnabled = true;
-          if(carLog!.taskStatus.taskStatusName == 'GİRMEK')
+          if(carLog!.taskStatus.taskStatusName == 'GİRMEK') {
             isEnabled = true;
+          }else if(carLog!.taskStatus.taskStatusName == 'SORUN GİDERME') {
+            setState(() {
+              _controllerProblemText.text = carLog!.problemReport!.problemSummary!;
+            });
+            isEnabled = true;
+            needUpdate= true;
+          }
           else
             isEnabled = false;
         });
@@ -223,62 +233,78 @@ class _GetCarProblemPageState extends State<GetCarProblemPage>
     }
 
     // Create problem report DTO
-    final reportDTO = CarProblemReportRequestDTO(
-      carId: carLog!.carInfo.id,
-      creatorUserId: user!.userId,
-      problemSummary: problemText,
-      dateTime: DateTime.now(),
-    );
+    if(needUpdate){
+      final reportDTO = CarProblemReportRequestDTO(
+        id: carLog!.problemReport!.id,
+        carId: carLog!.carInfo.id,
+        creatorUserId: user!.userId,
+        problemSummary: problemText,
+        dateTime: DateTime.now(),
+      );
+      final updateResponse = await CarProblemReportApi().updateReport(reportDTO);
+      if(updateResponse.status == 'success')
+        StringHelper.showInfoDialog(context, updateResponse.message!);
+      else
+        StringHelper.showErrorDialog(context, updateResponse.message!);
+    }
+    else{
+      final reportDTO = CarProblemReportRequestDTO(
+        carId: carLog!.carInfo.id,
+        creatorUserId: user!.userId,
+        problemSummary: problemText,
+        dateTime: DateTime.now(),
+      );
 
-    // Save problem report
-    final saveResponse = await CarProblemReportApi().createReport(reportDTO);
+      // Save problem report
+      final saveResponse = await CarProblemReportApi().createReport(reportDTO);
 
-    if (saveResponse.status == 'success' && saveResponse.data != null) {
-      _controllerProblemText.clear();
+      if (saveResponse.status == 'success' && saveResponse.data != null) {
+        _controllerProblemText.clear();
 
-      // Now create a CarRepairLog based on saved problem report
-      final createdProblemReport = saveResponse.data!;
+        // Now create a CarRepairLog based on saved problem report
+        final createdProblemReport = saveResponse.data!;
 
+        final taskStatus  = await TaskStatusApi().getTaskStatusByName('SORUN GİDERME');
+        if(taskStatus.status != 'success') {
+          StringHelper.showErrorDialog(
+              context, 'Task Status Respone: ${taskStatus.message!}');
+          return;
+        }
+        if (taskStatus.status == 'success' && taskStatus.data != null) {
 
-      final taskStatus  = await TaskStatusApi().getTaskStatusByName('SORUN GİDERME');
-      if(taskStatus.status != 'success') {
-        StringHelper.showErrorDialog(
-            context, 'Task Status Respone: ${taskStatus.message!}');
-        return;
-      }
-      if (taskStatus.status == 'success' && taskStatus.data != null) {
+          final logRequest = CarRepairLogRequestDTO(
+            carId: createdProblemReport.carId,
+            creatorUserId: user.userId,
+            description: '',
+            taskStatusId: taskStatus.data!.id!,
+            dateTime: DateTime.now(),
+            problemReportId: createdProblemReport.id,
+          );
 
-        final logRequest = CarRepairLogRequestDTO(
-          carId: createdProblemReport.carId,
-          creatorUserId: user.userId,
-          description: '',
-          taskStatusId: taskStatus.data!.id!,
-          dateTime: DateTime.now(),
-          problemReportId: createdProblemReport.id,
-        );
+          final logResponse = await CarRepairLogApi().createLog(logRequest);
 
-        final logResponse = await CarRepairLogApi().createLog(logRequest);
-
-        if (logResponse.status == 'success') {
-          StringHelper.showInfoDialog(
-              context,"CarRepairLog başarıyla oluşturuldu.");
+          if (logResponse.status == 'success') {
+            StringHelper.showInfoDialog(
+                context,"CarRepairLog başarıyla oluşturuldu.");
+          } else {
+            StringHelper.showErrorDialog(
+                context,"CarRepairLog oluşturulamadı: ${logResponse.message}");
+          }
         } else {
           StringHelper.showErrorDialog(
-              context,"CarRepairLog oluşturulamadı: ${logResponse.message}");
+              context,"TaskStatus not found or error: ${taskStatus.message}");
         }
+
+
       } else {
+        // Show error if saving problem report failed
         StringHelper.showErrorDialog(
-            context,"TaskStatus not found or error: ${taskStatus.message}");
+            context,
+            "Problem raporu kaydedilirken hata oluştu: ${saveResponse.message}"
+        );
       }
-
-
-    } else {
-      // Show error if saving problem report failed
-      StringHelper.showErrorDialog(
-          context,
-          "Problem raporu kaydedilirken hata oluştu: ${saveResponse.message}"
-      );
     }
+
   }
 
   void _resetPage() {
