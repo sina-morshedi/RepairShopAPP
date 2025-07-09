@@ -5,6 +5,8 @@ import 'package:autonetwork/DTO/CarRepairLogResponseDTO.dart';
 import 'package:autonetwork/DTO/CarRepairLogRequestDTO.dart';
 import 'package:autonetwork/DTO/CarProblemReportRequestDTO.dart';
 import 'package:autonetwork/DTO/TaskStatusDTO.dart';
+import 'package:autonetwork/DTO/users.dart';
+import 'package:autonetwork/DTO/PartUsed.dart';
 import 'package:autonetwork/GetCarInfoApp.dart';
 import 'package:flutter/material.dart';
 import '../dboAPI.dart';
@@ -17,6 +19,12 @@ import 'Components/CarRepairedLogCard.dart';
 import '../backend_services/backend_services.dart';
 import 'package:autonetwork/Pages/Components/helpers/app_helpers.dart';
 import 'user_prefs.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter/services.dart' show rootBundle;
+import 'package:pdf/widgets.dart' as pw;
+import 'Components/helpers/invoice_pdf_helper.dart';
+
+
 
 class GetCarProblemPage extends StatefulWidget {
   const GetCarProblemPage({super.key});
@@ -32,6 +40,9 @@ class _GetCarProblemPageState extends State<GetCarProblemPage>
   CarRepairLogResponseDTO? carLog;
   String? car_id;
 
+  pw.Font? customFont;
+  pw.MemoryImage? logoImage;
+
   late stt.SpeechToText speech;
   bool _isListening = false;
   bool _shouldContinueListening = false;
@@ -39,19 +50,26 @@ class _GetCarProblemPageState extends State<GetCarProblemPage>
   bool isEnabled = false;
   bool needUpdate = false;
   bool isResultEnabled = false;
+  bool showInvoice = false;
   TextEditingController _controllerProblemText = TextEditingController();
+  UserProfileDTO? user;
+
+  List<TextEditingController> _priceControllers = [];
+  List<TextEditingController> _quantityControllers = [];
+  List<TextEditingController> _partNameControllers = [];
 
   late AnimationController _controller;
   late Animation<Offset> _slideAnimation;
   late Animation<double> _fadeAnimation;
 
   @override
-  void initState() {
+  void initState(){
     super.initState();
     needUpdate = false;
     _controller = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 700),
+
     );
 
     _slideAnimation = Tween<Offset>(
@@ -66,7 +84,31 @@ class _GetCarProblemPageState extends State<GetCarProblemPage>
 
     _controller.forward(); // start animation on page open
     speech = stt.SpeechToText();
+    _load();
+    loadAssets();
+    // _initControllers();
   }
+  void _load() async{
+    user = await UserPrefs.getUserWithID();
+    print(user!.permission.permissionName);
+  }
+
+  void _initControllers(List<PartUsed> parts) {
+    _partNameControllers = parts.map((p) => TextEditingController(text: p.partName)).toList();
+    _priceControllers = parts.map((p) => TextEditingController(text: p.partPrice.toString())).toList();
+    _quantityControllers = parts.map((p) => TextEditingController(text: p.quantity.toString())).toList();
+  }
+
+  Future<void> loadAssets() async {
+    final fontData = await rootBundle.load("assets/fonts/Vazirmatn-Regular.ttf");
+    final imageData = await rootBundle.load("assets/images/Logo.png");
+
+    setState(() {
+      customFont = pw.Font.ttf(fontData);
+      logoImage = pw.MemoryImage(imageData.buffer.asUint8List());
+    });
+  }
+
 
   @override
   void dispose() {
@@ -162,6 +204,10 @@ class _GetCarProblemPageState extends State<GetCarProblemPage>
             });
             isEnabled = true;
             needUpdate= true;
+          }else if (carLog!.taskStatus.taskStatusName == 'FATURA') {
+            isEnabled = false;
+            needUpdate= false;
+
           }
           else
             isEnabled = false;
@@ -322,9 +368,6 @@ class _GetCarProblemPageState extends State<GetCarProblemPage>
   }
 
   void showRepairDialog() async{
-    dboAPI api = dboAPI();
-    UserProfileDTO? user = await UserPrefs.getUserWithID();
-
     final result = await Sharecomponents.showRepairDialog(context, carLog!.carInfo);
     if(result == true){
       setState(() {
@@ -363,61 +406,9 @@ class _GetCarProblemPageState extends State<GetCarProblemPage>
                     ),
                     const SizedBox(height: 20),
                     if (isResultEnabled) ...[
-                      CarRepairedLogCard(log: carLog!),
+                      buildResultSection(),
+                    ],
 
-                      const SizedBox(height: 20),
-                      isEnabled
-                          ? Column(
-                        children: [
-                          const SizedBox(height: 20),
-                          Row(
-                            children: [
-                              Expanded(
-                                child: TextField(
-                                  controller: _controllerProblemText,
-                                  maxLines: 3,
-                                  decoration: const InputDecoration(
-                                    labelText: "Araç problemi",
-                                    border: OutlineInputBorder(),
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              IconButton(
-                                icon: Icon(_isListening ? Icons.mic : Icons.mic_none),
-                                onPressed: () {
-                                  _listen();
-                                  print('Mic button pressed for First Text');
-                                },
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 10),
-                        ],
-                      )
-                          : const SizedBox.shrink(),
-
-                      const SizedBox(height: 10),
-                      isEnabled
-                          ? Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                        children: [
-                          ElevatedButton(
-                            onPressed: saveProblem,
-                            child: const Text("Kaydet"),
-                          ),
-                          ElevatedButton(
-                            onPressed: _resetPage,
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.red,
-                            ),
-                            child: const Text("Reset"),
-                          ),
-                        ],
-                      )
-                          : const SizedBox.shrink(),
-
-                    ]
                   ],
                 ),
               ),
@@ -427,4 +418,343 @@ class _GetCarProblemPageState extends State<GetCarProblemPage>
       ),
     );
   }
+
+  void _onSave() async {
+    final parts = carLog?.partsUsed ?? [];
+
+    for (int i = 0; i < parts.length; i++) {
+      final name = _partNameControllers[i].text.trim();
+      final priceText = _priceControllers[i].text.trim();
+      final quantityText = _quantityControllers[i].text.trim();
+
+      if (name.isEmpty) {
+        StringHelper.showErrorDialog(context, 'Lütfen ${i + 1}. parçanın adını giriniz.');
+        return;
+      }
+
+      final price = double.tryParse(priceText);
+      if (price == null || price < 0) {
+        StringHelper.showErrorDialog(context, 'Lütfen ${i + 1}. parçanın fiyatını düzgün giriniz.');
+        return;
+      }
+
+      final qty = int.tryParse(quantityText);
+      if (qty == null || qty <= 0) {
+        StringHelper.showErrorDialog(context, 'Lütfen ${i + 1}. parçanın adedini düzgün giriniz.');
+        return;
+      }
+
+      parts[i] = PartUsed(
+        partName: name,
+        partPrice: price,
+        quantity: qty,
+      );
+    }
+
+    final bool _needUpdate = carLog!.taskStatus.taskStatusName == "FATURA"? true:false;
+
+    if(_needUpdate) {
+      final request = CarRepairLogRequestDTO(
+          carId: carLog!.carInfo.id,
+          creatorUserId: user!.userId,
+          assignedUserId: carLog!.assignedUser!.userId,
+          description: carLog!.description,
+          problemReportId: carLog!.problemReport!.id,
+          taskStatusId: carLog!.taskStatus.id!,
+          partsUsed: carLog!.partsUsed,
+          dateTime: DateTime.now());
+
+      final response = await CarRepairLogApi().updateLog(carLog!.id!, request);
+      if(response.status == 'success'){
+        StringHelper.showInfoDialog(context, 'Faturayı güncelledi.');
+      }
+      else
+        StringHelper.showErrorDialog(context, response.message!);
+    }
+    else{
+      final responseTask = await TaskStatusApi().getTaskStatusByName('FATURA');
+      if(responseTask.status != 'success'){
+        StringHelper.showErrorDialog(context, responseTask.message!);
+        return;
+      }
+      final request = CarRepairLogRequestDTO(
+          carId: carLog!.carInfo.id,
+          creatorUserId: user!.userId,
+          assignedUserId: carLog!.assignedUser!.userId,
+          description: carLog!.description,
+          problemReportId: carLog!.problemReport!.id,
+          taskStatusId: responseTask.data!.id!,
+          partsUsed: carLog!.partsUsed,
+          dateTime: DateTime.now());
+
+      final response = await CarRepairLogApi().createLog(request);
+      if(response.status == 'success') {
+        StringHelper.showInfoDialog(context, 'Fatura kaydedildi.');
+      }
+      else
+        StringHelper.showErrorDialog(context, response.message!);
+    }
+  }
+
+  void _onLoad()async {
+    final response = await CarRepairLogApi().getLatestLogByLicensePlate(plateController.text.toUpperCase());
+    List<PartUsed?> parts;
+    if(response.status == 'success')
+      parts = response.data!.partsUsed!;
+    else{
+      StringHelper.showErrorDialog(context, response.message!);
+      return;
+    }
+
+
+    // پاک‌سازی کنترلرهای فعلی
+    _partNameControllers.clear();
+    _priceControllers.clear();
+    _quantityControllers.clear();
+
+    // ایجاد کنترلرهای جدید بر اساس داده‌های موجود
+    for (var part in parts) {
+      _partNameControllers.add(TextEditingController(text: part!.partName));
+      _priceControllers.add(TextEditingController(text: part.partPrice.toString()));
+      _quantityControllers.add(TextEditingController(text: part.quantity.toString()));
+    }
+
+    setState(() {});
+  }
+
+  Widget buildInvoiceViewSection() {
+    final parts = carLog?.partsUsed ?? [];
+
+    if (_partNameControllers.length != parts.length ||
+        _priceControllers.length != parts.length ||
+        _quantityControllers.length != parts.length) {
+      _initControllers(parts);
+    }
+
+    double totalPrice = 0;
+    for (var p in parts) {
+      totalPrice += p.partPrice * p.quantity;
+    }
+
+    void addNewPart() {
+      setState(() {
+        parts.add(PartUsed(partName: '', partPrice: 0, quantity: 1));
+        _partNameControllers.add(TextEditingController());
+        _priceControllers.add(TextEditingController(text: '0'));
+        _quantityControllers.add(TextEditingController(text: '1'));
+      });
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        CarRepairedLogCard(log: carLog!),
+        const SizedBox(height: 20),
+
+        ElevatedButton.icon(
+          onPressed: (customFont == null || logoImage == null || parts.isEmpty)
+              ? null
+              :  () {
+            InvoicePdfHelper.generateAndDownloadInvoicePdf(
+              customFont: customFont!,
+              logoImage: logoImage!,
+              parts: parts,
+              log: carLog!,
+              licensePlate: carLog!.carInfo.licensePlate,
+            );
+          },
+          icon: const Icon(Icons.picture_as_pdf),
+          label: const Text("Faturayı PDF olarak oluştur"),
+          style: ElevatedButton.styleFrom(
+            padding: const EdgeInsets.symmetric(vertical: 14),
+          ),
+        ),
+        const SizedBox(height: 16),
+
+        if (parts.isNotEmpty)
+          ...List.generate(parts.length, (index) {
+            return Container(
+              padding: const EdgeInsets.all(8),
+              margin: const EdgeInsets.only(bottom: 12),
+              decoration: BoxDecoration(
+                border: Border.all(color: Colors.grey.shade400),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  TextField(
+                    controller: _partNameControllers[index],
+                    decoration: InputDecoration(
+                      labelText: "Parça Adı",
+                      border: OutlineInputBorder(),
+                      isDense: true,
+                    ),
+                    onChanged: (value) {
+                      setState(() {
+                        parts[index] = PartUsed(
+                          partName: value,
+                          partPrice: parts[index].partPrice,
+                          quantity: parts[index].quantity,
+                        );
+                      });
+                    },
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: _priceControllers[index],
+                          keyboardType: TextInputType.number,
+                          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                          decoration: const InputDecoration(
+                            labelText: "Fiyat (₺)",
+                            border: OutlineInputBorder(),
+                            isDense: true,
+                          ),
+                          onChanged: (value) {
+                            final newPrice = double.tryParse(value) ?? 0.0;
+                            setState(() {
+                              parts[index] = PartUsed(
+                                partName: parts[index].partName,
+                                partPrice: newPrice,
+                                quantity: parts[index].quantity,
+                              );
+                            });
+                          },
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      SizedBox(
+                        width: 80,
+                        child: TextField(
+                          controller: _quantityControllers[index],
+                          keyboardType: TextInputType.number,
+                          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                          decoration: const InputDecoration(
+                            labelText: "Adet",
+                            border: OutlineInputBorder(),
+                            isDense: true,
+                          ),
+                          onChanged: (value) {
+                            final newQty = int.tryParse(value) ?? 1;
+                            setState(() {
+                              parts[index] = PartUsed(
+                                partName: parts[index].partName,
+                                partPrice: parts[index].partPrice,
+                                quantity: newQty,
+                              );
+                            });
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 6),
+                  Text(
+                    "Toplam: ${(parts[index].partPrice * parts[index].quantity).toStringAsFixed(2)} ₺",
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                ],
+              ),
+            );
+          }),
+
+        const SizedBox(height: 10),
+        Text(
+          "Genel Toplam: ${totalPrice.toStringAsFixed(2)} ₺",
+          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+        ),
+
+        const SizedBox(height: 10),
+        /// 🔻 ردیف دکمه‌های Save، Load، Add
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Row(
+              children: [
+                ElevatedButton(
+                  onPressed: () {
+                    _onSave();
+                  },
+                  child: const Text("Kaydet"),
+                ),
+                const SizedBox(width: 8),
+                ElevatedButton(
+                  onPressed: () {
+                    _onLoad();
+                  },
+                  child: const Text("Yükle"),
+                ),
+              ],
+            ),
+            IconButton(
+              icon: Icon(Icons.add_circle_outline, size: 36, color: Colors.green),
+              tooltip: "Yeni parça ekle",
+              onPressed: addNewPart,
+            ),
+          ],
+        ),
+
+
+      ],
+    );
+  }
+
+  Widget buildResultSection() {
+    if (!isResultEnabled || carLog == null) return SizedBox.shrink();
+
+    if ((carLog!.taskStatus.taskStatusName == 'FATURA' || carLog!.taskStatus.taskStatusName == 'İŞ BİTTİ') &&
+        user!.permission.permissionName == 'Yönetici') {
+      return buildInvoiceViewSection();
+    } else if (carLog!.taskStatus.taskStatusName == 'GİRMEK' ||
+        carLog!.taskStatus.taskStatusName == 'SORUN GİDERME') {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          CarRepairedLogCard(log: carLog!),
+          const SizedBox(height: 20),
+          Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _controllerProblemText,
+                  maxLines: 3,
+                  decoration: const InputDecoration(
+                    labelText: "Araç problemi",
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              IconButton(
+                icon: Icon(_isListening ? Icons.mic : Icons.mic_none),
+                onPressed: _listen,
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              ElevatedButton(
+                onPressed: saveProblem,
+                child: const Text("Kaydet"),
+              ),
+              ElevatedButton(
+                onPressed: _resetPage,
+                style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+                child: const Text("Reset"),
+              ),
+            ],
+          ),
+        ],
+      );
+    }
+
+    return CarRepairedLogCard(log: carLog!);
+  }
+
 }

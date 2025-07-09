@@ -94,6 +94,31 @@ class UserProfilePageState extends State<UserProfilePage>
     return info.version;
   }
 
+  void _handleLogButtonPressed(CarRepairLogResponseDTO log) async{
+    final user = await UserPrefs.getUserWithID();
+    
+    final responseTask = await TaskStatusApi().getTaskStatusByName("BAŞLANGIÇ");
+    if(responseTask.status == 'success'){
+      final request = CarRepairLogRequestDTO(
+          carId: log.carInfo.id,
+          creatorUserId: user!.userId,
+          taskStatusId: responseTask.data!.id!,
+          problemReportId: log.problemReport!.id,
+          assignedUserId: log.assignedUser!.userId,
+          description: log.description,
+          dateTime: DateTime.now());
+
+      final response = await CarRepairLogApi().createLog(request);
+      if(response.status == 'success')
+        StringHelper.showInfoDialog(context, 'Bilgiler kaydedildi.');
+      else
+        StringHelper.showErrorDialog(context, response.message!);
+    }
+    else{
+      StringHelper.showErrorDialog(context, responseTask.message!);
+    }
+
+  }
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -139,7 +164,17 @@ class UserProfilePageState extends State<UserProfilePage>
               ),
               SizedBox(height: 12),
               Expanded(
-                child: CarRepairLogListView(logs: logs),
+                child: CarRepairLogListView(
+                  logs: logs,
+                  buttonBuilder: (log) {
+                    return {
+                      'text': 'İşe başlıyorum.',
+                      'onPressed': () {
+                        _handleLogButtonPressed(log);
+                      },
+                    };
+                  },
+                ),
               ),
             ],
           ),

@@ -29,4 +29,5 @@ class PartUsed {
     return 'PartUsed(partName: $partName, partPrice: $partPrice, quantity: $quantity)';
   }
 
+  double get total => quantity * partPrice;
 }
