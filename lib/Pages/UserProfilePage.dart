@@ -77,7 +77,7 @@ class UserProfilePageState extends State<UserProfilePage>
     }
     final request = TaskStatusUserRequestDTO(
       assignedUserId: user!.userId,
-      taskStatusNames: ["BAŞLANGIÇ", "DURAKLAT", "ÜSTA"],
+      taskStatusNames: ["BAŞLANGIÇ", "DURAKLAT", "USTA"],
     );
     final response = await CarRepairLogApi().getLatestLogsByTaskStatusesAndUserId(request);
     if(response.status == 'success'){

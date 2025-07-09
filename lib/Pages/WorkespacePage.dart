@@ -20,7 +20,7 @@ class _WorkespacePageState extends State<WorkespacePage> {
     'GÖREV YOK': 'assets/images/vector/stop.svg',
     'GİRMEK': 'assets/images/vector/entered-garage.svg',
     'SORUN GİDERME': 'assets/images/vector/note.svg',
-    'ÜSTA': 'assets/images/vector/repairman.svg',
+    'USTA': 'assets/images/vector/repairman.svg',
     'BAŞLANGIÇ': 'assets/images/vector/play.svg',
     'DURAKLAT': 'assets/images/vector/pause.svg',
     'İŞ BİTTİ': 'assets/images/vector/finish-flag.svg',

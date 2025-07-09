@@ -1,15 +1,10 @@
 import 'dart:ui';
-import 'package:autonetwork/Common.dart';
-import 'package:autonetwork/DTO/CarInfoDTO.dart';
 import 'package:autonetwork/DTO/CarRepairLogResponseDTO.dart';
 import 'package:autonetwork/DTO/CarRepairLogRequestDTO.dart';
 import 'package:autonetwork/DTO/CarProblemReportRequestDTO.dart';
 import 'package:autonetwork/DTO/TaskStatusDTO.dart';
-import 'package:autonetwork/DTO/users.dart';
 import 'package:autonetwork/DTO/PartUsed.dart';
-import 'package:autonetwork/GetCarInfoApp.dart';
 import 'package:flutter/material.dart';
-import '../dboAPI.dart';
 import '../type.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 import 'user_prefs.dart';
@@ -18,7 +13,6 @@ import 'Components/ShareComponents.dart';
 import 'Components/CarRepairedLogCard.dart';
 import '../backend_services/backend_services.dart';
 import 'package:autonetwork/Pages/Components/helpers/app_helpers.dart';
-import 'user_prefs.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:pdf/widgets.dart' as pw;
@@ -51,8 +45,13 @@ class _GetCarProblemPageState extends State<GetCarProblemPage>
   bool needUpdate = false;
   bool isResultEnabled = false;
   bool showInvoice = false;
+  bool isUserButtonEnabled = true;
+  bool isDeliveryButtonDisabled = false;
+
   TextEditingController _controllerProblemText = TextEditingController();
   UserProfileDTO? user;
+  List<UserProfileDTO>? usersLogs;
+  String? selectedUserId;
 
   List<TextEditingController> _priceControllers = [];
   List<TextEditingController> _quantityControllers = [];
@@ -86,6 +85,7 @@ class _GetCarProblemPageState extends State<GetCarProblemPage>
     speech = stt.SpeechToText();
     _load();
     loadAssets();
+    _loadUsers();
     // _initControllers();
   }
   void _load() async{
@@ -187,6 +187,8 @@ class _GetCarProblemPageState extends State<GetCarProblemPage>
   void searchPlate() async{
     isEnabled = false;
     needUpdate = false;
+    isUserButtonEnabled = true;
+    isDeliveryButtonDisabled = false;
     final response = await backend_services().getCarInfoByLicensePlate(plateController.text.toUpperCase());
 
     if(response.status == 'success'){
@@ -670,37 +672,80 @@ class _GetCarProblemPageState extends State<GetCarProblemPage>
 
         const SizedBox(height: 10),
         /// 🔻 ردیف دکمه‌های Save، Load، Add
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            /// 🔸 ردیف اول: Kaydet, Yükle, Add
             Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                ElevatedButton(
-                  onPressed: () {
-                    _onSave();
-                  },
-                  child: const Text("Kaydet"),
+                Row(
+                  children: [
+                    ElevatedButton(
+                      onPressed: isDeliveryButtonDisabled ? null : () async {
+                        _onSave();
+                      },
+                      child: const Text("Kaydet"),
+                    ),
+                    const SizedBox(width: 8),
+                    ElevatedButton(
+                      onPressed: isDeliveryButtonDisabled ? null : () async {
+                        _onLoad();
+                      },
+                      child: const Text("Yükle"),
+                    ),
+                  ],
                 ),
-                const SizedBox(width: 8),
-                ElevatedButton(
-                  onPressed: () {
-                    _onLoad();
-                  },
-                  child: const Text("Yükle"),
+                IconButton(
+                  icon: Icon(
+                    Icons.add_circle_outline,
+                    size: 36,
+                    color: isDeliveryButtonDisabled ? Colors.grey : Colors.green,
+                  ),
+                  tooltip: "Yeni parça ekle",
+                  onPressed: isDeliveryButtonDisabled ? null : addNewPart,
                 ),
+
               ],
             ),
-            IconButton(
-              icon: Icon(Icons.add_circle_outline, size: 36, color: Colors.green),
-              tooltip: "Yeni parça ekle",
-              onPressed: addNewPart,
-            ),
+
+            const SizedBox(height: 10),
+
+            /// 🔸 ردیف دوم: فقط دکمه‌ی Teslim Et (اگر در وضعیت FATURA باشه)
+            if (carLog?.taskStatus.taskStatusName == 'FATURA')
+              Align(
+                alignment: Alignment.centerLeft,
+                child: ElevatedButton.icon(
+                  onPressed: isDeliveryButtonDisabled ? null : () async {
+                    _vehicleDelivery();
+                  },
+                  icon: const Icon(Icons.car_rental),  // آیکون سمت چپ متن است
+                  label: const Text("Teslim Et"),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.orange,
+                    foregroundColor: Colors.white,
+                  ),
+                ),
+
+              ),
           ],
         ),
 
 
+
+
       ],
     );
+  }
+
+  void _loadUsers()async{
+    final response = await backend_services().fetchAllProfile();
+
+    if(response.status == 'success'){
+      usersLogs = response.data;
+    }
+    else
+      StringHelper.showErrorDialog(context, response.message!);
   }
 
   Widget buildResultSection() {
@@ -750,6 +795,11 @@ class _GetCarProblemPageState extends State<GetCarProblemPage>
               ),
             ],
           ),
+          const SizedBox(height: 10),
+          if (carLog!.taskStatus.taskStatusName == 'SORUN GİDERME' && usersLogs != null) ...[
+            const SizedBox(height: 10),
+            buildUserDropdown(),
+          ],
         ],
       );
     }
@@ -757,4 +807,124 @@ class _GetCarProblemPageState extends State<GetCarProblemPage>
     return CarRepairedLogCard(log: carLog!);
   }
 
+  Widget buildUserDropdown() {
+    return Row(
+      children: [
+        Expanded(
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            decoration: BoxDecoration(
+              border: Border.all(color: Colors.grey), // خط دور درابتان
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: DropdownButtonHideUnderline(
+              child: DropdownButton<String>(
+                isExpanded: true,
+                hint: const Text("Kullanıcı Seçiniz"),
+                value: selectedUserId,
+                items: usersLogs?.map((user) {
+                  return DropdownMenuItem<String>(
+                    value: user.userId,
+                    child: Text('${user.firstName} ${user.lastName}'),
+                  );
+                }).toList(),
+                onChanged: (value) {
+                  setState(() {
+                    selectedUserId = value;
+                  });
+                },
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(width: 8),
+        GestureDetector(
+          onTap: isUserButtonEnabled
+              ? () {
+            if (selectedUserId != null) {
+              sendUserSelectionToBackend(selectedUserId!);
+            } else {
+              print("Kullanıcı seçilmedi.");
+            }
+          }
+              : null,
+          child: Icon(
+            Icons.check_circle,
+            color: isUserButtonEnabled ? Colors.green : Colors.grey,
+            size: 32,
+          ),
+        ),
+
+      ],
+    );
+  }
+
+  void sendUserSelectionToBackend(String? userId) async{
+    if (userId == null) return;
+
+    TaskStatusDTO? taskStatusLog;
+    final user = await UserPrefs.getUserWithID();
+    final taskStatus  = await TaskStatusApi().getTaskStatusByName('USTA');
+    if(taskStatus.status == 'success')
+      taskStatusLog = taskStatus.data;
+    else {
+      StringHelper.showErrorDialog(
+          context, 'Task Status Respone: ${taskStatus.message!}');
+      return;
+    }
+    final logRequest = CarRepairLogRequestDTO(
+      carId: carLog!.carInfo.id,
+      creatorUserId: user!.userId,
+      description: '',
+      taskStatusId: taskStatusLog!.id!,
+      dateTime: DateTime.now(),
+      problemReportId: carLog!.problemReport!.id,
+      assignedUserId: userId,
+    );
+
+    final response = await CarRepairLogApi().createLog(logRequest);
+
+    if(response.status == 'success'){
+      setState(() {
+        isUserButtonEnabled = false;
+      });
+      StringHelper.showInfoDialog(context, 'Bilgiler başarıyla kaydedildi.');
+    }
+    else
+      StringHelper.showErrorDialog(context, response.message!);
+  }
+
+  void _vehicleDelivery()async{
+    if(user == null){
+      StringHelper.showErrorDialog(context, 'Kullanıcı bulunamadı.');
+      return;
+    }
+
+    final responseTask = await TaskStatusApi().getTaskStatusByName("GÖREV YOK");
+    if(responseTask.status == 'success'){
+      final request = CarRepairLogRequestDTO(
+          carId: carLog!.carInfo.id,
+          creatorUserId: user!.userId,
+          taskStatusId: responseTask.data!.id!,
+          assignedUserId: carLog!.assignedUser!.userId,
+          problemReportId: carLog!.problemReport!.id,
+          partsUsed: carLog!.partsUsed,
+          dateTime: DateTime.now()
+      );
+      final response = await CarRepairLogApi().createLog(request);
+      if(response.status == 'success') {
+        setState(() {
+          isDeliveryButtonDisabled = true;
+        });
+
+        StringHelper.showInfoDialog(context, 'Bilgiler kaydedildi.');
+      }
+      else
+        StringHelper.showErrorDialog(context, response.message!);
+
+    }
+    else
+      StringHelper.showErrorDialog(context, responseTask.message!);
+
+  }
 }
