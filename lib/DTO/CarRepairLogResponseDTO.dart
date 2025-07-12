@@ -3,17 +3,19 @@ import 'CarProblemReportResponseDTO.dart';
 import 'UserProfileDTO.dart';
 import 'TaskStatusDTO.dart';
 import 'PartUsed.dart';
+import 'PaymentRecord.dart';
 
 class CarRepairLogResponseDTO {
   final String? id;
   final CarInfoDTO carInfo;
   final UserProfileDTO creatorUser;
-  final UserProfileDTO? assignedUser;   // ← اضافه شده
+  final UserProfileDTO? assignedUser;
   final String? description;
   final TaskStatusDTO taskStatus;
   final DateTime dateTime;
   final CarProblemReportResponseDTO? problemReport;
-  final List<PartUsed>? partsUsed;       // ← اضافه شده
+  final List<PartUsed>? partsUsed;
+  List<PaymentRecord>? paymentRecords;
 
   CarRepairLogResponseDTO({
     this.id,
@@ -24,27 +26,38 @@ class CarRepairLogResponseDTO {
     required this.taskStatus,
     required this.dateTime,
     this.problemReport,
-    this.partsUsed,   // ← اضافه شده
+    this.partsUsed,
+    this.paymentRecords, // ← اضافه شده
   });
 
   factory CarRepairLogResponseDTO.fromJson(Map<String, dynamic> json) {
+    DateTime adjustedDate;
+    try {
+      final rawDate = json['dateTime'] != null ? DateTime.parse(json['dateTime']) : DateTime.now();
+      final cutoffDate = DateTime(2025, 7, 11, 17, 47, 00);
+      adjustedDate = rawDate.isBefore(cutoffDate) ? rawDate : rawDate.toLocal();
+    } catch (e) {
+      adjustedDate = DateTime.now();
+    }
+
     return CarRepairLogResponseDTO(
-      id: json['_id'] ?? json['id'],
+      id: json['_id'] ?? json['id'] ?? '',
       carInfo: CarInfoDTO.fromJson(json['carInfo']),
       creatorUser: UserProfileDTO.fromJson(json['creatorUser']),
-      assignedUser: json['assignedUser'] != null
+      assignedUser: (json['assignedUser'] != null && json['assignedUser'] is Map<String, dynamic>)
           ? UserProfileDTO.fromJson(json['assignedUser'])
           : null,
       description: json['description'],
       taskStatus: TaskStatusDTO.fromJson(json['taskStatus']),
-      dateTime: DateTime.parse(json['dateTime']),
-      problemReport: json['problemReport'] != null
+      dateTime: adjustedDate,
+      problemReport: (json['problemReport'] != null && json['problemReport'] is Map<String, dynamic>)
           ? CarProblemReportResponseDTO.fromJson(json['problemReport'])
           : null,
-      partsUsed: json['partsUsed'] != null
-          ? (json['partsUsed'] as List)
-          .map((item) => PartUsed.fromJson(item))
-          .toList()
+      partsUsed: (json['partsUsed'] != null && json['partsUsed'] is List)
+          ? (json['partsUsed'] as List).map((item) => PartUsed.fromJson(item)).toList()
+          : null,
+      paymentRecords: (json['paymentRecords'] != null && json['paymentRecords'] is List)
+          ? (json['paymentRecords'] as List).map((item) => PaymentRecord.fromJson(item)).toList()
           : null,
     );
   }
@@ -61,6 +74,8 @@ class CarRepairLogResponseDTO {
       if (problemReport != null) 'problemReport': problemReport!.toJson(),
       if (partsUsed != null)
         'partsUsed': partsUsed!.map((e) => e.toJson()).toList(),
+      if (paymentRecords != null)
+        'paymentRecords': paymentRecords!.map((e) => e.toJson()).toList(),
     };
   }
 
@@ -75,7 +90,8 @@ class CarRepairLogResponseDTO {
         'taskStatus: $taskStatus, '
         'dateTime: $dateTime, '
         'problemReport: $problemReport, '
-        'partsUsed: $partsUsed'
+        'partsUsed: $partsUsed, '
+        'paymentRecords: $paymentRecords'
         ')';
   }
 }

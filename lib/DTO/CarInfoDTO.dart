@@ -24,6 +24,16 @@ class CarInfoDTO {
   });
 
   factory CarInfoDTO.fromJson(Map<String, dynamic> json) {
+    final cutoffDate = DateTime(2025, 7, 11, 17, 47, 00); // تاریخ شروع استفاده از UTC
+    DateTime? adjustedDate;
+
+    if (json['dateTime'] != null) {
+      final rawDate = DateTime.parse(json['dateTime']);
+      adjustedDate = rawDate.isBefore(cutoffDate) ? rawDate : rawDate.toLocal();
+    } else {
+      adjustedDate = null;
+    }
+
     return CarInfoDTO(
       id: json['id'] ?? '',
       chassisNo: json['chassisNo'] ?? '',
@@ -33,11 +43,10 @@ class CarInfoDTO {
       brandModel: json['brandModel'] ?? '',
       modelYear: json['modelYear'],
       fuelType: json['fuelType'] ?? '',
-      dateTime: json['dateTime'] != null
-          ? DateTime.parse(json['dateTime'])
-          : null, // یا مقدار null در صورت اجازه
+      dateTime: adjustedDate,
     );
   }
+
 
 
   Map<String, dynamic> toJson() {

@@ -50,7 +50,7 @@ class StringHelper {
     );
   }
 
-  static Future<void> showErrorDialog(BuildContext context, String errorMessage) {
+  static Future<void> showErrorDialog(BuildContext context, String errorMessage) async{
     return showDialog(
       context: context,
       builder: (context) {

@@ -43,6 +43,8 @@ class ApiEndpoints {
   static const String carRepairLogLatestGetByTaskStatusNameAndAssignedToUserId = "$_baseUrl/car-repair-log/latest-by-tasks-status-name-and-userid";
   static const String carRepairLogLatestGetForEachCar = "$_baseUrl/car-repair-log/log-for-each-car";
   static const String carRepairLogLatestGetForEachCarAssignedToUserId = "$_baseUrl/car-repair-log/latest-assigned";
+  static const String carRepairLogInvoiceFilterByDate = "$_baseUrl/car-repair-log/invoice-filter-by-date";
+  static const String carRepairLogInvoiceFilterByLicensePlate = "$_baseUrl/car-repair-log/invoice-filter-by-licens-plate";
   static const String carRepairLogCreate = "$_baseUrl/car-repair-log/create";
   static const String carRepairLogUpdate = "$_baseUrl/car-repair-log/update";
   static const String carRepairLogDelete = "$_baseUrl/car-repair-log/delete";

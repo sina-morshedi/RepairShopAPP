@@ -104,6 +104,7 @@ flutter:
     - assets/images/ISBIR.png
     - assets/images/RBSN.jpg
     - assets/images/Logo.png
+    - assets/images/invoice-logo.png
     - assets/images/raster/
     - assets/images/vector/
     - assets/background.jpg

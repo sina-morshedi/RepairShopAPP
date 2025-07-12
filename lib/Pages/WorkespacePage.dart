@@ -306,7 +306,7 @@ class _WorkespacePageState extends State<WorkespacePage> {
     final response = await CarRepairLogApi().updateLog(log.id!, dto);
 
     if (response.status == 'success') {
-      StringHelper.showInfoDialog(context, response.message!);
+      StringHelper.showInfoDialog(context, "Faturayı güncelledi.");
     } else {
       StringHelper.showErrorDialog(context, response.message!);
     }

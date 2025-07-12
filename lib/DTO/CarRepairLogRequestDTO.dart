@@ -1,14 +1,16 @@
 import 'PartUsed.dart'; // اگه PartUsed توی فایل جداست، اینو وارد کن
+import 'PaymentRecord.dart'; // فایل جدیدی که مدل PaymentRecord توشه
 
 class CarRepairLogRequestDTO {
   final String carId;
   final String creatorUserId;
-  final String? assignedUserId; // فیلد جدید
+  final String? assignedUserId;
   final String? description;
   final String taskStatusId;
   final DateTime dateTime;
   final String? problemReportId;
-  final List<PartUsed>? partsUsed; // ← اضافه شده
+  final List<PartUsed>? partsUsed;
+  final List<PaymentRecord>? paymentRecords; // ← اضافه شد
 
   CarRepairLogRequestDTO({
     required this.carId,
@@ -18,7 +20,8 @@ class CarRepairLogRequestDTO {
     required this.taskStatusId,
     required this.dateTime,
     this.problemReportId,
-    this.partsUsed, // ← اضافه شده
+    this.partsUsed,
+    this.paymentRecords, // ← اضافه شد
   });
 
   factory CarRepairLogRequestDTO.fromJson(Map<String, dynamic> json) {
@@ -35,6 +38,11 @@ class CarRepairLogRequestDTO {
           .map((item) => PartUsed.fromJson(item))
           .toList()
           : null,
+      paymentRecords: json['paymentRecords'] != null
+          ? (json['paymentRecords'] as List)
+          .map((item) => PaymentRecord.fromJson(item))
+          .toList()
+          : null,
     );
   }
 
@@ -49,6 +57,8 @@ class CarRepairLogRequestDTO {
       if (problemReportId != null) 'problemReportId': problemReportId,
       if (partsUsed != null)
         'partsUsed': partsUsed!.map((e) => e.toJson()).toList(),
+      if (paymentRecords != null)
+        'paymentRecords': paymentRecords!.map((e) => e.toJson()).toList(),
     };
   }
 
@@ -62,7 +72,8 @@ class CarRepairLogRequestDTO {
         'taskStatusId: $taskStatusId, '
         'dateTime: $dateTime, '
         'problemReportId: $problemReportId, '
-        'partsUsed: $partsUsed'
+        'partsUsed: $partsUsed, '
+        'paymentRecords: $paymentRecords'
         ')';
   }
 }

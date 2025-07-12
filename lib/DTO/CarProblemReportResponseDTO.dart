@@ -15,15 +15,35 @@ class CarProblemReportResponseDTO {
     this.dateTime,
   });
 
-  factory CarProblemReportResponseDTO.fromJson(Map<String, dynamic> json) {
+  factory CarProblemReportResponseDTO.fromJson(Map<String, dynamic>? json) {
+    if (json == null) {
+      return CarProblemReportResponseDTO(
+        id: '',
+        carInfo: null,
+        creatorUser: null,
+        problemSummary: '',
+        dateTime: DateTime.now(),
+      );
+    }
+
+    DateTime adjustedDate;
+    try {
+      final rawDate = json['dateTime'] != null ? DateTime.parse(json['dateTime']) : DateTime.now();
+      final cutoffDate = DateTime(2025, 7, 11, 17, 47, 00);
+      adjustedDate = rawDate.isBefore(cutoffDate) ? rawDate : rawDate.toLocal();
+    } catch (e) {
+      adjustedDate = DateTime.now();
+    }
+
     return CarProblemReportResponseDTO(
-      id: json['id'],
-      carInfo: json['carInfo'] != null ? CarInfoDTO.fromJson(json['carInfo']) : null,
-      creatorUser: json['creatorUser'] != null ? UserProfileDTO.fromJson(json['creatorUser']) : null,
-      problemSummary: json['problemSummary'],
-      dateTime: json['dateTime'] != null ? DateTime.tryParse(json['dateTime']) : null,
+      id: json['id'] ?? '',
+      carInfo: json['carInfo'] is Map<String, dynamic> ? CarInfoDTO.fromJson(json['carInfo']) : null,
+      creatorUser: json['creatorUser'] is Map<String, dynamic> ? UserProfileDTO.fromJson(json['creatorUser']) : null,
+      problemSummary: json['problemSummary'] ?? '',
+      dateTime: adjustedDate,
     );
   }
+
 
   Map<String, dynamic> toJson() {
     return {

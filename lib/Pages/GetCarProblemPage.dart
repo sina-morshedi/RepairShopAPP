@@ -3,7 +3,9 @@ import 'package:autonetwork/DTO/CarRepairLogResponseDTO.dart';
 import 'package:autonetwork/DTO/CarRepairLogRequestDTO.dart';
 import 'package:autonetwork/DTO/CarProblemReportRequestDTO.dart';
 import 'package:autonetwork/DTO/TaskStatusDTO.dart';
+import 'package:autonetwork/DTO/FilterRequestDTO.dart';
 import 'package:autonetwork/DTO/PartUsed.dart';
+import 'package:autonetwork/DTO/PaymentRecord.dart';
 import 'package:flutter/material.dart';
 import '../type.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
@@ -11,12 +13,14 @@ import 'user_prefs.dart';
 import 'package:autonetwork/DTO/UserProfileDTO.dart';
 import 'Components/ShareComponents.dart';
 import 'Components/CarRepairedLogCard.dart';
+import 'Components/CarRepairLogListView.dart';
 import '../backend_services/backend_services.dart';
 import 'package:autonetwork/Pages/Components/helpers/app_helpers.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:pdf/widgets.dart' as pw;
 import 'Components/helpers/invoice_pdf_helper.dart';
+import 'Components/DecimalTextInputFormatter.dart';
 
 
 
@@ -34,6 +38,10 @@ class _GetCarProblemPageState extends State<GetCarProblemPage>
   CarRepairLogResponseDTO? carLog;
   String? car_id;
 
+  String? selectedStatus;
+  List<String> statusOptions=[];
+  List<CarRepairLogResponseDTO> _logs = [];
+
   pw.Font? customFont;
   pw.MemoryImage? logoImage;
 
@@ -46,7 +54,9 @@ class _GetCarProblemPageState extends State<GetCarProblemPage>
   bool isResultEnabled = false;
   bool showInvoice = false;
   bool isUserButtonEnabled = true;
-  bool isDeliveryButtonDisabled = false;
+  bool _hasShownInvoiceError = false;
+  bool _isInvoiceCalculated = false;
+
 
   TextEditingController _controllerProblemText = TextEditingController();
   UserProfileDTO? user;
@@ -56,6 +66,9 @@ class _GetCarProblemPageState extends State<GetCarProblemPage>
   List<TextEditingController> _priceControllers = [];
   List<TextEditingController> _quantityControllers = [];
   List<TextEditingController> _partNameControllers = [];
+  final TextEditingController _newPaymentController = TextEditingController();
+
+  double totalPrice = 0;
 
   late AnimationController _controller;
   late Animation<Offset> _slideAnimation;
@@ -88,20 +101,43 @@ class _GetCarProblemPageState extends State<GetCarProblemPage>
     _loadUsers();
     // _initControllers();
   }
-  void _load() async{
+  void _load() async {
     user = await UserPrefs.getUserWithID();
-    print(user!.permission.permissionName);
+
+    final response = await TaskStatusApi().getAllStatuses();
+
+    if (response.status == 'success') {
+      List<TaskStatusDTO> taskStatusDTO = response.data!;
+
+      statusOptions = ['Seçenek seçilmedi'] +taskStatusDTO.map((e) => e.taskStatusName).toList();
+
+      setState(() {
+        selectedStatus = statusOptions.first;
+      });
+    } else {
+      StringHelper.showErrorDialog(context, response.message!);
+    }
   }
 
   void _initControllers(List<PartUsed> parts) {
-    _partNameControllers = parts.map((p) => TextEditingController(text: p.partName)).toList();
-    _priceControllers = parts.map((p) => TextEditingController(text: p.partPrice.toString())).toList();
-    _quantityControllers = parts.map((p) => TextEditingController(text: p.quantity.toString())).toList();
+    _partNameControllers = parts
+        .map((p) => TextEditingController(text: p.partName))
+        .toList();
+
+    _priceControllers = parts
+        .map((p) => TextEditingController(
+        text: p.partPrice.toStringAsFixed(2))) // 👈 دقت اعشاری
+        .toList();
+
+    _quantityControllers = parts
+        .map((p) => TextEditingController(text: p.quantity.toString()))
+        .toList();
   }
+
 
   Future<void> loadAssets() async {
     final fontData = await rootBundle.load("assets/fonts/Vazirmatn-Regular.ttf");
-    final imageData = await rootBundle.load("assets/images/Logo.png");
+    final imageData = await rootBundle.load("assets/images/invoice-logo.png");
 
     setState(() {
       customFont = pw.Font.ttf(fontData);
@@ -120,6 +156,23 @@ class _GetCarProblemPageState extends State<GetCarProblemPage>
     plateController.dispose();
     _controllerProblemText.dispose();
     super.dispose();
+  }
+
+  void _clearPartControllers() {
+    for (final controller in _partNameControllers) {
+      controller.dispose();
+    }
+    for (final controller in _priceControllers) {
+      controller.dispose();
+    }
+    for (final controller in _quantityControllers) {
+      controller.dispose();
+    }
+
+    _partNameControllers.clear();
+    _priceControllers.clear();
+    _quantityControllers.clear();
+    _newPaymentController.clear();
   }
 
   void _startListening() {
@@ -144,7 +197,6 @@ class _GetCarProblemPageState extends State<GetCarProblemPage>
     if (!_isListening) {
       bool available = await speech.initialize(
         onStatus: (val) {
-          print('Status$_activeField: $val');
           if ((val == 'notListening' || val == 'done') &&
               _shouldContinueListening) {
             Future.delayed(const Duration(milliseconds: 500), () {
@@ -155,7 +207,6 @@ class _GetCarProblemPageState extends State<GetCarProblemPage>
           }
         },
         onError: (val) {
-          print('Error: $val');
           if (val.errorMsg == 'error_speech_timeout' ||
               val.errorMsg == 'error_no_match') {
             _startListening();
@@ -166,7 +217,6 @@ class _GetCarProblemPageState extends State<GetCarProblemPage>
           });
         },
       );
-      print('Av: $available');
       if (available) {
         setState(() {
           _isListening = true;
@@ -184,11 +234,40 @@ class _GetCarProblemPageState extends State<GetCarProblemPage>
     }
   }
 
+  Future<void> searchPlateByTaskStatus() async {
+    FilterRequestDTO filterRequest = FilterRequestDTO(
+      taskStatusNames: ["FATURA"],
+      licensePlate: plateController.text.toUpperCase(),
+    );
+
+    final response = await CarRepairLogApi().getLogsByTaskNameAndLicensePlate(filterRequest);
+
+    if (response.status == 'success') {
+      setState(() {
+        _logs = response.data!;
+        carLog = null; // ← بسیار مهم برای جلوگیری از ویجت اشتباه
+      });
+    } else {
+      await StringHelper.showErrorDialog(context, response.message!);
+    }
+  }
+
+
   void searchPlate() async{
+    isResultEnabled = false;
     isEnabled = false;
     needUpdate = false;
     isUserButtonEnabled = true;
-    isDeliveryButtonDisabled = false;
+
+    if (selectedStatus != null && selectedStatus != "Seçenek seçilmedi") {
+      await searchPlateByTaskStatus();
+      setState(() {
+        isResultEnabled = true;
+      });
+
+      return; // ادامه نده
+    }
+
     final response = await backend_services().getCarInfoByLicensePlate(plateController.text.toUpperCase());
 
     if(response.status == 'success'){
@@ -196,6 +275,7 @@ class _GetCarProblemPageState extends State<GetCarProblemPage>
 
       if(response.status == 'success') {
         setState(() {
+          _clearPartControllers();
           carLog = response.data;
           isResultEnabled = true;
           if(carLog!.taskStatus.taskStatusName == 'GİRMEK') {
@@ -228,6 +308,7 @@ class _GetCarProblemPageState extends State<GetCarProblemPage>
       StringHelper.showErrorDialog(context, response.message!);
 
   }
+
   void _CarEntry() async{
     TaskStatusDTO? taskStatusLog;
     final user = await UserPrefs.getUserWithID();
@@ -377,52 +458,23 @@ class _GetCarProblemPageState extends State<GetCarProblemPage>
       });
     }
   }
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text("Plaka ile Ara")),
-      body: SafeArea(
-        child: GestureDetector(
-          onTap: () => FocusScope.of(context).unfocus(),
-          child: SlideTransition(
-            position: _slideAnimation,
-            child: FadeTransition(
-              opacity: _fadeAnimation,
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    TextField(
-                      controller: plateController,
-                      decoration: const InputDecoration(
-                        labelText: "Plaka girin",
-                        border: OutlineInputBorder(),
-                      ),
-                      textCapitalization: TextCapitalization.characters,
-                    ),
-                    const SizedBox(height: 10),
-                    ElevatedButton(
-                      onPressed: searchPlate,
-                      child: const Text("Ara"),
-                    ),
-                    const SizedBox(height: 20),
-                    if (isResultEnabled) ...[
-                      buildResultSection(),
-                    ],
-
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
 
   void _onSave() async {
     final parts = carLog?.partsUsed ?? [];
+
+    final newPaymentText = _newPaymentController.text.trim();
+    final newPaymentAmount = double.tryParse(newPaymentText);
+
+    if (newPaymentAmount != null && newPaymentAmount > 0) {
+      carLog!.paymentRecords ??= [];
+      carLog!.paymentRecords!.add(
+        PaymentRecord(
+          paymentDate: DateTime.now(),
+          amountPaid: newPaymentAmount,
+        ),
+      );
+    }
+
 
     for (int i = 0; i < parts.length; i++) {
       final name = _partNameControllers[i].text.trim();
@@ -464,6 +516,7 @@ class _GetCarProblemPageState extends State<GetCarProblemPage>
           problemReportId: carLog!.problemReport!.id,
           taskStatusId: carLog!.taskStatus.id!,
           partsUsed: carLog!.partsUsed,
+          paymentRecords: carLog!.paymentRecords,
           dateTime: DateTime.now());
 
       final response = await CarRepairLogApi().updateLog(carLog!.id!, request);
@@ -487,6 +540,32 @@ class _GetCarProblemPageState extends State<GetCarProblemPage>
           problemReportId: carLog!.problemReport!.id,
           taskStatusId: responseTask.data!.id!,
           partsUsed: carLog!.partsUsed,
+          paymentRecords: carLog!.paymentRecords,
+          dateTime: DateTime.now());
+
+      final response = await CarRepairLogApi().createLog(request);
+      if(response.status == 'success') {
+        StringHelper.showInfoDialog(context, 'Fatura kaydedildi.');
+      }
+      else
+        StringHelper.showErrorDialog(context, response.message!);
+    }
+
+    if(totalPrice==0){
+      final responseTask = await TaskStatusApi().getTaskStatusByName('GÖREV YOK');
+      if(responseTask.status != 'success'){
+        StringHelper.showErrorDialog(context, responseTask.message!);
+        return;
+      }
+      final request = CarRepairLogRequestDTO(
+          carId: carLog!.carInfo.id,
+          creatorUserId: user!.userId,
+          assignedUserId: carLog!.assignedUser!.userId,
+          description: carLog!.description,
+          problemReportId: carLog!.problemReport!.id,
+          taskStatusId: responseTask.data!.id!,
+          partsUsed: carLog!.partsUsed,
+          paymentRecords: carLog!.paymentRecords,
           dateTime: DateTime.now());
 
       final response = await CarRepairLogApi().createLog(request);
@@ -498,33 +577,40 @@ class _GetCarProblemPageState extends State<GetCarProblemPage>
     }
   }
 
-  void _onLoad()async {
-    final response = await CarRepairLogApi().getLatestLogByLicensePlate(plateController.text.toUpperCase());
-    List<PartUsed?> parts;
-    if(response.status == 'success')
-      parts = response.data!.partsUsed!;
-    else{
-      StringHelper.showErrorDialog(context, response.message!);
-      return;
+  Future<void> _calcInvoice() async {
+    double partsTotal = 0;
+    for (var p in carLog!.partsUsed!) {
+      partsTotal += p.partPrice * p.quantity;
     }
 
-
-    // پاک‌سازی کنترلرهای فعلی
-    _partNameControllers.clear();
-    _priceControllers.clear();
-    _quantityControllers.clear();
-
-    // ایجاد کنترلرهای جدید بر اساس داده‌های موجود
-    for (var part in parts) {
-      _partNameControllers.add(TextEditingController(text: part!.partName));
-      _priceControllers.add(TextEditingController(text: part.partPrice.toString()));
-      _quantityControllers.add(TextEditingController(text: part.quantity.toString()));
+    double paymentsTotal = 0;
+    if (carLog!.paymentRecords != null) {
+      for (var payment in carLog!.paymentRecords!) {
+        paymentsTotal += payment.amountPaid;
+      }
     }
 
-    setState(() {});
+    double newPaymentAmount = double.tryParse(_newPaymentController.text) ?? 0.0;
+    double calculatedTotal = partsTotal - paymentsTotal - newPaymentAmount;
+
+    if (calculatedTotal < 0) {
+      if (!_hasShownInvoiceError) {
+        _hasShownInvoiceError = true;
+        await StringHelper.showErrorDialog(context, "Toplam ödeme, toplam tutardan fazla olamaz.");
+        searchPlate();
+      }
+      calculatedTotal = 0;
+    } else {
+      _hasShownInvoiceError = false; // ریست در حالت بدون خطا
+    }
+
+    setState(() {
+      totalPrice = calculatedTotal;
+    });
   }
 
   Widget buildInvoiceViewSection() {
+
     final parts = carLog?.partsUsed ?? [];
 
     if (_partNameControllers.length != parts.length ||
@@ -533,9 +619,11 @@ class _GetCarProblemPageState extends State<GetCarProblemPage>
       _initControllers(parts);
     }
 
-    double totalPrice = 0;
-    for (var p in parts) {
-      totalPrice += p.partPrice * p.quantity;
+    if (!_isInvoiceCalculated) {
+      WidgetsBinding.instance.addPostFrameCallback((_) async {
+        await _calcInvoice();
+        _isInvoiceCalculated = true;
+      });
     }
 
     void addNewPart() {
@@ -557,7 +645,7 @@ class _GetCarProblemPageState extends State<GetCarProblemPage>
           onPressed: (customFont == null || logoImage == null || parts.isEmpty)
               ? null
               :  () {
-            InvoicePdfHelper.generateAndDownloadInvoicePdf(
+            InvoicePdfHelper.generateAndSaveInvoicePdf(
               customFont: customFont!,
               logoImage: logoImage!,
               parts: parts,
@@ -575,94 +663,165 @@ class _GetCarProblemPageState extends State<GetCarProblemPage>
 
         if (parts.isNotEmpty)
           ...List.generate(parts.length, (index) {
-            return Container(
-              padding: const EdgeInsets.all(8),
-              margin: const EdgeInsets.only(bottom: 12),
-              decoration: BoxDecoration(
-                border: Border.all(color: Colors.grey.shade400),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  TextField(
-                    controller: _partNameControllers[index],
-                    decoration: InputDecoration(
-                      labelText: "Parça Adı",
-                      border: OutlineInputBorder(),
-                      isDense: true,
+            return Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Container(
+                    padding: const EdgeInsets.all(8),
+                    margin: const EdgeInsets.only(bottom: 12),
+                    decoration: BoxDecoration(
+                      border: Border.all(color: Colors.grey.shade400),
+                      borderRadius: BorderRadius.circular(10),
                     ),
-                    onChanged: (value) {
-                      setState(() {
-                        parts[index] = PartUsed(
-                          partName: value,
-                          partPrice: parts[index].partPrice,
-                          quantity: parts[index].quantity,
-                        );
-                      });
-                    },
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: TextField(
-                          controller: _priceControllers[index],
-                          keyboardType: TextInputType.number,
-                          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        TextField(
+                          controller: _partNameControllers[index],
                           decoration: const InputDecoration(
-                            labelText: "Fiyat (₺)",
+                            labelText: "Parça Adı",
                             border: OutlineInputBorder(),
                             isDense: true,
                           ),
                           onChanged: (value) {
-                            final newPrice = double.tryParse(value) ?? 0.0;
                             setState(() {
                               parts[index] = PartUsed(
-                                partName: parts[index].partName,
-                                partPrice: newPrice,
+                                partName: value,
+                                partPrice: parts[index].partPrice,
                                 quantity: parts[index].quantity,
                               );
                             });
                           },
                         ),
-                      ),
-                      const SizedBox(width: 12),
-                      SizedBox(
-                        width: 80,
-                        child: TextField(
-                          controller: _quantityControllers[index],
-                          keyboardType: TextInputType.number,
-                          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                          decoration: const InputDecoration(
-                            labelText: "Adet",
-                            border: OutlineInputBorder(),
-                            isDense: true,
-                          ),
-                          onChanged: (value) {
-                            final newQty = int.tryParse(value) ?? 1;
-                            setState(() {
-                              parts[index] = PartUsed(
-                                partName: parts[index].partName,
-                                partPrice: parts[index].partPrice,
-                                quantity: newQty,
-                              );
-                            });
-                          },
+                        const SizedBox(height: 8),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: TextField(
+                                controller: _priceControllers[index],
+                                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                inputFormatters: [
+                                  DecimalTextInputFormatter(decimalRange: 2),
+                                ],
+                                decoration: const InputDecoration(
+                                  labelText: "Fiyat (₺)",
+                                  border: OutlineInputBorder(),
+                                  isDense: true,
+                                ),
+                                onChanged: (value) {
+                                  final newPrice = double.tryParse(value) ?? 0.0;
+                                  setState(() {
+                                    _isInvoiceCalculated = false;
+                                    parts[index] = PartUsed(
+                                      partName: parts[index].partName,
+                                      partPrice: newPrice,
+                                      quantity: parts[index].quantity,
+                                    );
+                                  });
+                                },
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            SizedBox(
+                              width: 80,
+                              child: TextField(
+                                controller: _quantityControllers[index],
+                                keyboardType: TextInputType.number,
+                                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                                decoration: const InputDecoration(
+                                  labelText: "Adet",
+                                  border: OutlineInputBorder(),
+                                  isDense: true,
+                                ),
+                                onChanged: (value) {
+                                  final newQty = int.tryParse(value) ?? 1;
+                                  setState(() {
+                                    _isInvoiceCalculated = false;
+                                    parts[index] = PartUsed(
+                                      partName: parts[index].partName,
+                                      partPrice: parts[index].partPrice,
+                                      quantity: newQty,
+                                    );
+                                  });
+                                },
+                              ),
+                            ),
+                          ],
                         ),
-                      ),
-                    ],
+                        const SizedBox(height: 6),
+                        Text(
+                          "Toplam: ${(parts[index].partPrice * parts[index].quantity).toStringAsFixed(2)} ₺",
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                      ],
+                    ),
                   ),
-
-                  const SizedBox(height: 6),
-                  Text(
-                    "Toplam: ${(parts[index].partPrice * parts[index].quantity).toStringAsFixed(2)} ₺",
-                    style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(width: 8),
+                InkWell(
+                  onTap: () {
+                    setState(() {
+                      parts.removeAt(index);
+                      _partNameControllers.removeAt(index);
+                      _priceControllers.removeAt(index);
+                      _quantityControllers.removeAt(index);
+                    });
+                  },
+                  child: const Icon(
+                    Icons.remove_circle,
+                    color: Colors.red,
                   ),
-                ],
-              ),
+                ),
+              ],
             );
           }),
+
+        if ((carLog?.paymentRecords ?? []).isNotEmpty) ...[
+          const SizedBox(height: 10),
+          const Text(
+            "Ödeme Geçmişi:",
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 6),
+          ...carLog!.paymentRecords!.map((record) {
+            return Text(
+              "${record.paymentDate.day.toString().padLeft(2, '0')}/"
+                  "${record.paymentDate.month.toString().padLeft(2, '0')}/"
+                  "${record.paymentDate.year} - "
+                  "${record.amountPaid.toStringAsFixed(2)} ₺",
+              style: const TextStyle(fontSize: 14),
+            );
+          }).toList(),
+        ],
+
+        const SizedBox(height: 10),
+        const Text(
+          "Yeni Ödeme (₺):",
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 6),
+        Align(
+          alignment: Alignment.centerLeft,
+          child: SizedBox(
+            width: 120,
+            child: TextField(
+              controller: _newPaymentController,
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              decoration: const InputDecoration(
+                border: OutlineInputBorder(),
+                hintText: "ödeme",
+                isDense: true,
+                contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+              ),
+              onChanged: (value) {
+                setState(() {
+                  _isInvoiceCalculated = false;
+                });
+              },
+            ),
+          ),
+        ),
 
         const SizedBox(height: 10),
         Text(
@@ -682,58 +841,30 @@ class _GetCarProblemPageState extends State<GetCarProblemPage>
                 Row(
                   children: [
                     ElevatedButton(
-                      onPressed: isDeliveryButtonDisabled ? null : () async {
+                      onPressed:() async {
                         _onSave();
                       },
                       child: const Text("Kaydet"),
                     ),
-                    const SizedBox(width: 8),
-                    ElevatedButton(
-                      onPressed: isDeliveryButtonDisabled ? null : () async {
-                        _onLoad();
-                      },
-                      child: const Text("Yükle"),
-                    ),
+
                   ],
                 ),
                 IconButton(
                   icon: Icon(
                     Icons.add_circle_outline,
                     size: 36,
-                    color: isDeliveryButtonDisabled ? Colors.grey : Colors.green,
+                    color: Colors.green,
                   ),
                   tooltip: "Yeni parça ekle",
-                  onPressed: isDeliveryButtonDisabled ? null : addNewPart,
+                  onPressed: addNewPart,
                 ),
 
               ],
             ),
 
             const SizedBox(height: 10),
-
-            /// 🔸 ردیف دوم: فقط دکمه‌ی Teslim Et (اگر در وضعیت FATURA باشه)
-            if (carLog?.taskStatus.taskStatusName == 'FATURA')
-              Align(
-                alignment: Alignment.centerLeft,
-                child: ElevatedButton.icon(
-                  onPressed: isDeliveryButtonDisabled ? null : () async {
-                    _vehicleDelivery();
-                  },
-                  icon: const Icon(Icons.car_rental),  // آیکون سمت چپ متن است
-                  label: const Text("Teslim Et"),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.orange,
-                    foregroundColor: Colors.white,
-                  ),
-                ),
-
-              ),
           ],
         ),
-
-
-
-
       ],
     );
   }
@@ -749,7 +880,33 @@ class _GetCarProblemPageState extends State<GetCarProblemPage>
   }
 
   Widget buildResultSection() {
+
+    if (selectedStatus == "FATURA" && _logs.isNotEmpty) {
+      return SizedBox(
+        height: 400, // یا هر عددی که متناسب با صفحه باشه
+        child: CarRepairLogListView(
+          logs: _logs,
+          buttonBuilder: user!.permission.permissionName == 'Yönetici'
+              ? (log) => {
+            'text': 'Fatura',
+            'onPressed': () async {
+              InvoicePdfHelper.generateAndSaveInvoicePdf(
+                customFont: customFont!,
+                logoImage: logoImage!,
+                parts: log.partsUsed!,
+                log: log,
+                licensePlate: log.carInfo.licensePlate,
+              );
+            },
+          }
+              : null,
+        ),
+      );
+    }
+
     if (!isResultEnabled || carLog == null) return SizedBox.shrink();
+
+
 
     if ((carLog!.taskStatus.taskStatusName == 'FATURA' || carLog!.taskStatus.taskStatusName == 'İŞ BİTTİ') &&
         user!.permission.permissionName == 'Yönetici') {
@@ -844,7 +1001,6 @@ class _GetCarProblemPageState extends State<GetCarProblemPage>
             if (selectedUserId != null) {
               sendUserSelectionToBackend(selectedUserId!);
             } else {
-              print("Kullanıcı seçilmedi.");
             }
           }
               : null,
@@ -859,6 +1015,68 @@ class _GetCarProblemPageState extends State<GetCarProblemPage>
     );
   }
 
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text("Plaka ile Ara")),
+      body: SafeArea(
+        child: GestureDetector(
+          onTap: () => FocusScope.of(context).unfocus(),
+          child: SlideTransition(
+            position: _slideAnimation,
+            child: FadeTransition(
+              opacity: _fadeAnimation,
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    TextField(
+                      controller: plateController,
+                      decoration: const InputDecoration(
+                        labelText: "Plaka girin",
+                        border: OutlineInputBorder(),
+                      ),
+                      textCapitalization: TextCapitalization.characters,
+                    ),
+                    const SizedBox(height: 10),
+                    if (user != null && user!.permission.permissionName == 'Yönetici')
+                      DropdownButtonFormField<String>(
+                        value: selectedStatus,
+                        isExpanded: true,
+                        decoration: const InputDecoration(
+                          labelText: "Durum Seçin",
+                          border: OutlineInputBorder(),
+                        ),
+                        items: statusOptions
+                            .map((status) => DropdownMenuItem(
+                          value: status,
+                          child: Text(status),
+                        ))
+                            .toList(),
+                        onChanged: (value) {
+                          setState(() {
+                            selectedStatus = value;
+                          });
+                        },
+                      ),
+                    const SizedBox(height: 10),
+                    ElevatedButton(
+                      onPressed: searchPlate,
+                      child: const Text("Ara"),
+                    ),
+                    const SizedBox(height: 20),
+                    if (isResultEnabled) ...[
+                      buildResultSection(),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
   void sendUserSelectionToBackend(String? userId) async{
     if (userId == null) return;
 
@@ -894,37 +1112,4 @@ class _GetCarProblemPageState extends State<GetCarProblemPage>
       StringHelper.showErrorDialog(context, response.message!);
   }
 
-  void _vehicleDelivery()async{
-    if(user == null){
-      StringHelper.showErrorDialog(context, 'Kullanıcı bulunamadı.');
-      return;
-    }
-
-    final responseTask = await TaskStatusApi().getTaskStatusByName("GÖREV YOK");
-    if(responseTask.status == 'success'){
-      final request = CarRepairLogRequestDTO(
-          carId: carLog!.carInfo.id,
-          creatorUserId: user!.userId,
-          taskStatusId: responseTask.data!.id!,
-          assignedUserId: carLog!.assignedUser!.userId,
-          problemReportId: carLog!.problemReport!.id,
-          partsUsed: carLog!.partsUsed,
-          dateTime: DateTime.now()
-      );
-      final response = await CarRepairLogApi().createLog(request);
-      if(response.status == 'success') {
-        setState(() {
-          isDeliveryButtonDisabled = true;
-        });
-
-        StringHelper.showInfoDialog(context, 'Bilgiler kaydedildi.');
-      }
-      else
-        StringHelper.showErrorDialog(context, response.message!);
-
-    }
-    else
-      StringHelper.showErrorDialog(context, responseTask.message!);
-
-  }
 }

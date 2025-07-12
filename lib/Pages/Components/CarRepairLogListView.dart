@@ -16,9 +16,6 @@ class CarRepairLogListView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (logs.isEmpty) {
-      return const Center(child: Text("Hiç kayıt bulunamadı."));
-    }
 
     return ListView.builder(
       physics: const AlwaysScrollableScrollPhysics(),

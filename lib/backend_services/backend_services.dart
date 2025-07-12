@@ -16,6 +16,7 @@ import '../DTO/CarRepairLogRequestDTO.dart';
 import '../DTO/CarRepairLogResponseDTO.dart';
 import '../DTO/UpdateUserDTO.dart';
 import '../DTO/TaskStatusUserRequestDTO.dart';
+import '../DTO/FilterRequestDTO.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'ApiEndpoints.dart';

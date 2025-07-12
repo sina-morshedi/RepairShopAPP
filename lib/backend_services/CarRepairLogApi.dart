@@ -150,6 +150,76 @@ class CarRepairLogApi {
     }
   }
 
+  Future<ApiResponse<List<CarRepairLogResponseDTO>>> getLogsByTaskNameAndDateRange(FilterRequestDTO filter) async {
+    final String backendUrl = ApiEndpoints.carRepairLogInvoiceFilterByDate;
+
+    try {
+      final response = await http.post(
+        Uri.parse(backendUrl),
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode(filter.toJson()),
+      );
+
+      if (response.statusCode == 200) {
+        final List<dynamic> dataList = jsonDecode(response.body);
+        final List<CarRepairLogResponseDTO> logs =
+        dataList.map((e) => CarRepairLogResponseDTO.fromJson(e)).toList();
+
+        return ApiResponse(
+          status: 'success',
+          data: logs,
+        );
+      } else {
+        return ApiResponse(
+          status: 'error',
+          message: response.body,
+        );
+      }
+    } catch (e) {
+      return ApiResponse(
+        status: 'error',
+        message: 'Exception occurred: $e',
+      );
+    }
+  }
+
+  Future<ApiResponse<List<CarRepairLogResponseDTO>>> getLogsByTaskNameAndLicensePlate(FilterRequestDTO filter) async {
+    final String backendUrl = ApiEndpoints.carRepairLogInvoiceFilterByLicensePlate;
+
+    try {
+      final response = await http.post(
+        Uri.parse(backendUrl),
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode(filter.toJson()),
+      );
+
+      if (response.statusCode == 200) {
+        final List<dynamic> dataList = jsonDecode(response.body);
+        final List<CarRepairLogResponseDTO> logs =
+        dataList.map((e) => CarRepairLogResponseDTO.fromJson(e)).toList();
+
+        return ApiResponse(
+          status: 'success',
+          data: logs,
+        );
+      } else {
+        return ApiResponse(
+          status: 'error',
+          message: response.body,
+        );
+      }
+    } catch (e) {
+      return ApiResponse(
+        status: 'error',
+        message: 'Exception occurred: $e',
+      );
+    }
+  }
+
   Future<ApiResponse<List<CarRepairLogResponseDTO>>> getLatestLogsByTaskStatusesAndUserId(
       TaskStatusUserRequestDTO request) async {
     final String backendUrl = ApiEndpoints.carRepairLogLatestGetByTaskStatusNameAndAssignedToUserId;
