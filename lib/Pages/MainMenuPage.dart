@@ -1,13 +1,12 @@
+import 'package:autonetwork/DTO/UserProfileDTO.dart';
+import 'package:autonetwork/type.dart';
 import 'package:flutter/material.dart';
-import 'package:water_drop_nav_bar/water_drop_nav_bar.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'GetCarInfoPage.dart';
-import 'GetCarProblemPage.dart';
-
 import 'LoginPage.dart';
-import 'UserProfilePage.dart';
-import 'WorkespacePage.dart';
+import 'ManagerMenu.dart';
+import 'RepairmanMenu.dart';
+import 'user_prefs.dart';
 
 class MainMenuPage extends StatefulWidget {
   const MainMenuPage({super.key});
@@ -17,25 +16,33 @@ class MainMenuPage extends StatefulWidget {
 }
 
 class _MainMenuPageState extends State<MainMenuPage> {
-  int _selectedIndex = 0;
-  late PageController _pageController;
-
-  final GlobalKey<UserProfilePageState> _userProfileKey = GlobalKey<UserProfilePageState>();
-
-  late final List<Widget> _pages;
+  bool isRoleSelected = false;
+  String selectedRole = "";
+  UserProfileDTO? user;
 
   @override
   void initState() {
     super.initState();
-    _pageController = PageController(initialPage: _selectedIndex);
     _checkLoginStatus();
+    _loadUserProfileDTO();
+  }
 
-    _pages = [
-      UserProfilePage(key: _userProfileKey),
-      const GetCarInfoPage(),
-      const GetCarProblemPage(),
-      WorkespacePage(),
-    ];
+  void _loadUserProfileDTO() async {
+    final loadedUser = await UserPrefs.getUserWithID();
+
+    if (mounted) {
+      setState(() {
+        user = loadedUser;
+      });
+    }
+  }
+
+
+  void _onRoleSelected(String role) {
+    setState(() {
+      selectedRole = role;
+      isRoleSelected = true;
+    });
   }
 
   void _checkLoginStatus() async {
@@ -50,6 +57,67 @@ class _MainMenuPageState extends State<MainMenuPage> {
     }
   }
 
+  Widget _buildRoleWidget() {
+    switch (selectedRole) {
+      case "manager":
+        return ManagerMenu(selectedRole: selectedRole);
+      case "secretary":
+        return const Center(child: Text("Sekreter sayfası burada olacak"));
+      case "technician":
+        return RepairmanMenu(selectedRole: selectedRole);;
+      default:
+        return const SizedBox.shrink();
+    }
+  }
+
+  Widget _buildRoleButton(String title, IconData icon, String roleKey) {
+    return ElevatedButton(
+      onPressed: () => _onRoleSelected(roleKey),
+      style: ElevatedButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12)),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon),
+          const SizedBox(width: 8),
+          Text(title),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRoleSelection() {
+    if (user == null) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    List<Widget> buttons = [];
+
+    // اگر دسترسی مدیر دارد، همه دکمه‌ها را نشان بده
+    if (user!.permission.permissionName.contains("Yönetici")) {
+      buttons.add(_buildRoleButton("Yönetici", Icons.admin_panel_settings, "manager"));
+      buttons.add(const SizedBox(height: 20));
+      buttons.add(_buildRoleButton("Sekreter", Icons.person, "secretary"));
+      buttons.add(const SizedBox(height: 20));
+      buttons.add(_buildRoleButton("Tamirci", Icons.build, "technician"));
+    } else if (user!.permission.permissionName.contains("sekreter")) {
+      buttons.add(_buildRoleButton("Sekreter", Icons.person, "secretary"));
+    } else if (user!.permission.permissionName.contains("Tamirci")) {
+      buttons.add(_buildRoleButton("Tamirci", Icons.build, "technician"));
+    }
+
+    if (buttons.isEmpty) {
+      return const Center(child: Text("Herhangi bir yetkiniz yok"));
+    }
+
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: buttons,
+      ),
+    );
+  }
+
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -62,57 +130,47 @@ class _MainMenuPageState extends State<MainMenuPage> {
           fit: BoxFit.cover,
         ),
         actions: [
-          Container(
-            margin: const EdgeInsets.only(right: 0, top: 0, bottom: 8),
-            child: IconButton(
-              icon: const Icon(Icons.exit_to_app, color: Colors.redAccent, size: 40),
-              onPressed: () async {
-                Navigator.pushAndRemoveUntil(
-                  context,
-                  MaterialPageRoute(builder: (context) => const LoginPage()),
-                      (route) => false,
-                );
-              },
-            ),
+          IconButton(
+            icon: const Icon(Icons.exit_to_app, color: Colors.redAccent, size: 40),
+            onPressed: () async{
+              final prefs = await SharedPreferences.getInstance();
+              await prefs.clear();
+              Navigator.pushAndRemoveUntil(
+                context,
+                MaterialPageRoute(builder: (context) => const LoginPage()),
+                    (route) => false,
+              );
+            },
           ),
         ],
       ),
-      body: PageView(
-        controller: _pageController,
-        onPageChanged: (index) {
-          setState(() {
-            _selectedIndex = index;
-          });
-          if (index == 0) {
-            _userProfileKey.currentState?.reloadUserData();
-          }
-        },
-        children: _pages,
-      ),
-      bottomNavigationBar: WaterDropNavBar(
-        backgroundColor: Colors.white,
-        waterDropColor: Colors.deepPurple,
-        selectedIndex: _selectedIndex,
-        onItemSelected: (int index) {
-          setState(() {
-            _selectedIndex = index;
-          });
-          _pageController.animateToPage(
-            index,
-            duration: const Duration(milliseconds: 400),
-            curve: Curves.easeOutQuad,
-          );
-          if (index == 0) {
-            _userProfileKey.currentState?.reloadUserData();
-          }
-        },
-        barItems: [
-          BarItem(filledIcon: Icons.person, outlinedIcon: Icons.person_outline),
-          BarItem(filledIcon: Icons.directions_car, outlinedIcon: Icons.add_circle_outline),
-          BarItem(filledIcon: Icons.list, outlinedIcon: Icons.list_alt_outlined),
-          BarItem(filledIcon: Icons.build, outlinedIcon: Icons.build_outlined),
+      body: isRoleSelected
+          ? Column(
+        children: [
+          AppBar(
+            leading: IconButton(
+              icon: const Icon(Icons.arrow_back, color: Colors.white),
+              onPressed: () {
+                setState(() {
+                  isRoleSelected = false;
+                  selectedRole = "";
+                });
+              },
+            ),
+            title: Text(
+              selectedRole == "manager"
+                  ? "Yönetici Menüsü"
+                  : selectedRole == "secretary"
+                  ? "Sekreter Menüsü"
+                  : "Tamirci Menüsü",
+              style: const TextStyle(color: Colors.white),
+            ),
+            backgroundColor: Colors.deepPurple,
+          ),
+          Expanded(child: _buildRoleWidget()),
         ],
-      ),
+      )
+          : _buildRoleSelection(),
     );
   }
 }
