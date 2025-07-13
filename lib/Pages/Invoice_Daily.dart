@@ -116,6 +116,7 @@ class _InvoiceDailyState extends State<InvoiceDaily> {
 
 
   Future<void> _searchByPlate() async {
+    FocusScope.of(context).unfocus();
     _isAmountPaidEnabled = true;
     final plate = _plateController.text.trim().toUpperCase();
     if (plate.isEmpty) return;
@@ -165,6 +166,8 @@ class _InvoiceDailyState extends State<InvoiceDaily> {
   }
 
   void _updateLog()async{
+    FocusScope.of(context).unfocus();
+    bool _needLoadData = true;
     final double totalInvoice = parts.fold(0.0, (sum, part) => sum + part.partPrice * part.quantity);
 
     final previousPayments = (log?.paymentRecords ?? []).fold<double>(
@@ -214,6 +217,7 @@ class _InvoiceDailyState extends State<InvoiceDaily> {
     );
 
     if(selectedTaskStatusId == responseFaturaOdeme.data!.id){
+      _needLoadData = false;
       final requestupdate = CarRepairLogRequestDTO(
         carId: log!.carInfo.id,
         creatorUserId: user!.userId,
@@ -271,7 +275,8 @@ class _InvoiceDailyState extends State<InvoiceDaily> {
           StringHelper.showErrorDialog(context, response.message!);
       }
     }
-    _searchByPlate();
+    if(_needLoadData)
+      _searchByPlate();
   }
 
   void _calcInvoicePrice() {
@@ -328,7 +333,6 @@ class _InvoiceDailyState extends State<InvoiceDaily> {
             decoration: const InputDecoration(
               labelText: 'Ödeme (₺)',
               border: OutlineInputBorder(),
-              prefixIcon: Icon(Icons.attach_money),
               isDense: true,
               contentPadding: EdgeInsets.symmetric(vertical: 8, horizontal: 8),
             ),
@@ -482,12 +486,17 @@ class _InvoiceDailyState extends State<InvoiceDaily> {
                         const SizedBox(height: 8),
                         Align(
                           alignment: Alignment.centerRight,
-                          child: Text(
-                            'Toplam: ${(parts[index].quantity * parts[index].partPrice).toStringAsFixed(2)} ₺',
-                            style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 16,
-                            ),
+                          child: ValueListenableBuilder<TextEditingValue>(
+                            valueListenable: totalPriceControllers[index],
+                            builder: (context, value, _) {
+                              return Text(
+                                'Toplam: ${value.text} ₺',
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16,
+                                ),
+                              );
+                            },
                           ),
                         ),
 
@@ -561,18 +570,6 @@ class _InvoiceDailyState extends State<InvoiceDaily> {
                 ),
               ),
             ),
-            // ElevatedButton(
-            //   onPressed: () {
-            //     _vehicleDelivery();
-            //   },
-            //   child: const Text('Araç teslim ediliyor'),
-            //   style: ElevatedButton.styleFrom(
-            //     padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-            //     shape: RoundedRectangleBorder(
-            //       borderRadius: BorderRadius.circular(10),
-            //     ),
-            //   ),
-            // ),
           ],
         ),
       ],
@@ -628,7 +625,10 @@ class _InvoiceDailyState extends State<InvoiceDaily> {
               CarRepairedLogCard(log: log!),
               const SizedBox(height: 24),
             ],
-            buildPartsInputList(),
+
+            if (log != null && log!.taskStatus.taskStatusName != "GÖREV YOK") ...[
+              buildPartsInputList(),
+            ],
           ],
         ),
       ),
