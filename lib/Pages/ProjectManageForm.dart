@@ -86,6 +86,7 @@ class _ProjectmanageFormState extends State<ProjectmanageForm>{
     final log = carRepairLogs![index];
     final statusId = findTaskStatusIdByName('USTA') ?? log.taskStatus.id;
 
+    final customerId = log?.customer?.id ?? "";
     final requestDTO = CarRepairLogRequestDTO(
       carId: log.carInfo.id,
       creatorUserId: log.creatorUser.userId,
@@ -94,6 +95,7 @@ class _ProjectmanageFormState extends State<ProjectmanageForm>{
       taskStatusId: statusId!,
       dateTime: DateTime.now(),
       problemReportId: log.problemReport?.id,
+      customerId: customerId,
     );
 
     final response = await CarRepairLogApi().createLog(requestDTO);

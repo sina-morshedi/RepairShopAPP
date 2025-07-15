@@ -17,6 +17,7 @@ import '../DTO/CarRepairLogResponseDTO.dart';
 import '../DTO/UpdateUserDTO.dart';
 import '../DTO/TaskStatusUserRequestDTO.dart';
 import '../DTO/FilterRequestDTO.dart';
+import '../DTO/CustomerDTO.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'ApiEndpoints.dart';
@@ -26,6 +27,7 @@ part 'RoleApi.dart';
 part 'UsersApi.dart';
 part 'CarProblemReportApi.dart';
 part 'CarRepairLogApi.dart';
+part 'CustomerApi.dart';
 
 class backend_services {
   Future<ApiResponse<List<UserProfileDTO>>> fetchAllProfile() async {

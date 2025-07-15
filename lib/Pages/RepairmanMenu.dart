@@ -3,7 +3,7 @@ import 'package:water_drop_nav_bar/water_drop_nav_bar.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'GetCarInfoPage.dart';
-import 'GetCarProblemPage.dart';
+import 'TroubleshootingForm.dart';
 
 import 'LoginPage.dart';
 import 'UserProfilePage.dart';
@@ -34,7 +34,7 @@ class _RepairmanMenuState extends State<RepairmanMenu> {
     _pages = [
       UserProfilePage(key: _userProfileKey),
       const GetCarInfoPage(),
-      const GetCarProblemPage(),
+      const TroubleshootingForm(),
       WorkespacePage(),
     ];
   }

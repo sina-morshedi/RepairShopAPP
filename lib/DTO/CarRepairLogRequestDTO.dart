@@ -5,6 +5,7 @@ class CarRepairLogRequestDTO {
   final String carId;
   final String creatorUserId;
   final String? assignedUserId;
+  final String? customerId;
   final String? description;
   final String taskStatusId;
   final DateTime dateTime;
@@ -16,6 +17,7 @@ class CarRepairLogRequestDTO {
     required this.carId,
     required this.creatorUserId,
     this.assignedUserId,
+    this.customerId,
     this.description,
     required this.taskStatusId,
     required this.dateTime,
@@ -33,6 +35,7 @@ class CarRepairLogRequestDTO {
       taskStatusId: json['taskStatusId'],
       dateTime: DateTime.parse(json['dateTime']),
       problemReportId: json['problemReportId'],
+      customerId: json['customerId'],
       partsUsed: json['partsUsed'] != null
           ? (json['partsUsed'] as List)
           .map((item) => PartUsed.fromJson(item))
@@ -55,6 +58,7 @@ class CarRepairLogRequestDTO {
       'taskStatusId': taskStatusId,
       'dateTime': dateTime.toIso8601String(),
       if (problemReportId != null) 'problemReportId': problemReportId,
+      if (customerId != null) 'customerId': customerId,
       if (partsUsed != null)
         'partsUsed': partsUsed!.map((e) => e.toJson()).toList(),
       if (paymentRecords != null)
@@ -72,6 +76,7 @@ class CarRepairLogRequestDTO {
         'taskStatusId: $taskStatusId, '
         'dateTime: $dateTime, '
         'problemReportId: $problemReportId, '
+        'customerId: $customerId, '
         'partsUsed: $partsUsed, '
         'paymentRecords: $paymentRecords'
         ')';

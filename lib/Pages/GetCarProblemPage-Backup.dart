@@ -466,7 +466,7 @@ class _GetCarProblemPageState extends State<GetCarProblemPage>
     final newPaymentAmount = double.tryParse(newPaymentText);
 
     if (newPaymentAmount != null && newPaymentAmount > 0) {
-      carLog!.paymentRecords ??= [];
+      // carLog!.paymentRecords ??= [];
       carLog!.paymentRecords!.add(
         PaymentRecord(
           paymentDate: DateTime.now(),

@@ -4,6 +4,7 @@ import 'UserProfileDTO.dart';
 import 'TaskStatusDTO.dart';
 import 'PartUsed.dart';
 import 'PaymentRecord.dart';
+import 'CustomerDTO.dart'; // ← اضافه شده
 
 class CarRepairLogResponseDTO {
   final String? id;
@@ -15,7 +16,9 @@ class CarRepairLogResponseDTO {
   final DateTime dateTime;
   final CarProblemReportResponseDTO? problemReport;
   final List<PartUsed>? partsUsed;
-  List<PaymentRecord>? paymentRecords;
+  final List<PaymentRecord>? paymentRecords;
+
+  final CustomerDTO? customer;  // ← اضافه شده
 
   CarRepairLogResponseDTO({
     this.id,
@@ -27,7 +30,8 @@ class CarRepairLogResponseDTO {
     required this.dateTime,
     this.problemReport,
     this.partsUsed,
-    this.paymentRecords, // ← اضافه شده
+    this.paymentRecords,
+    this.customer,  // ← اضافه شده
   });
 
   factory CarRepairLogResponseDTO.fromJson(Map<String, dynamic> json) {
@@ -59,6 +63,9 @@ class CarRepairLogResponseDTO {
       paymentRecords: (json['paymentRecords'] != null && json['paymentRecords'] is List)
           ? (json['paymentRecords'] as List).map((item) => PaymentRecord.fromJson(item)).toList()
           : null,
+      customer: (json['customer'] != null && json['customer'] is Map<String, dynamic>)
+          ? CustomerDTO.fromJson(json['customer'])
+          : null,  // ← اضافه شده
     );
   }
 
@@ -76,6 +83,7 @@ class CarRepairLogResponseDTO {
         'partsUsed': partsUsed!.map((e) => e.toJson()).toList(),
       if (paymentRecords != null)
         'paymentRecords': paymentRecords!.map((e) => e.toJson()).toList(),
+      if (customer != null) 'customer': customer!.toJson(),  // ← اضافه شده
     };
   }
 
@@ -91,7 +99,8 @@ class CarRepairLogResponseDTO {
         'dateTime: $dateTime, '
         'problemReport: $problemReport, '
         'partsUsed: $partsUsed, '
-        'paymentRecords: $paymentRecords'
+        'paymentRecords: $paymentRecords, '
+        'customer: $customer'  // ← اضافه شده
         ')';
   }
 }

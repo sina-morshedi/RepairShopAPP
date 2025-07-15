@@ -99,6 +99,7 @@ class UserProfilePageState extends State<UserProfilePage>
     
     final responseTask = await TaskStatusApi().getTaskStatusByName("BAŞLANGIÇ");
     if(responseTask.status == 'success'){
+      final customerId = log?.customer?.id ?? "";
       final request = CarRepairLogRequestDTO(
           carId: log.carInfo.id,
           creatorUserId: user!.userId,
@@ -106,7 +107,9 @@ class UserProfilePageState extends State<UserProfilePage>
           problemReportId: log.problemReport!.id,
           assignedUserId: log.assignedUser!.userId,
           description: log.description,
-          dateTime: DateTime.now());
+          dateTime: DateTime.now(),
+          customerId: customerId,
+      );
 
       final response = await CarRepairLogApi().createLog(request);
       if(response.status == 'success')

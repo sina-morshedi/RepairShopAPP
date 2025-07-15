@@ -24,21 +24,21 @@ import 'Components/DecimalTextInputFormatter.dart';
 
 
 
-class GetCarProblemPage extends StatefulWidget {
-  const GetCarProblemPage({super.key});
+class GetCarProblem extends StatefulWidget {
+  const GetCarProblem({super.key});
 
   @override
-  _GetCarProblemPageState createState() => _GetCarProblemPageState();
+  _GetCarProblemState createState() => _GetCarProblemState();
 }
 
-class _GetCarProblemPageState extends State<GetCarProblemPage>
+class _GetCarProblemState extends State<GetCarProblem>
     with SingleTickerProviderStateMixin {
   final plateController = TextEditingController();
   Map<String, dynamic>? carData;
   CarRepairLogResponseDTO? carLog;
   String? car_id;
 
-  String? selectedStatus;
+
   List<String> statusOptions=[];
   List<CarRepairLogResponseDTO> _logs = [];
 
@@ -54,8 +54,6 @@ class _GetCarProblemPageState extends State<GetCarProblemPage>
   bool isResultEnabled = false;
   bool showInvoice = false;
   bool isUserButtonEnabled = true;
-  bool _hasShownInvoiceError = false;
-  bool _isInvoiceCalculated = false;
 
 
   TextEditingController _controllerProblemText = TextEditingController();
@@ -96,26 +94,9 @@ class _GetCarProblemPageState extends State<GetCarProblemPage>
 
     _controller.forward(); // start animation on page open
     speech = stt.SpeechToText();
-    _load();
     loadAssets();
   }
-  void _load() async {
-    user = await UserPrefs.getUserWithID();
 
-    final response = await TaskStatusApi().getAllStatuses();
-
-    if (response.status == 'success') {
-      List<TaskStatusDTO> taskStatusDTO = response.data!;
-
-      statusOptions = ['Seçenek seçilmedi'] +taskStatusDTO.map((e) => e.taskStatusName).toList();
-
-      setState(() {
-        selectedStatus = statusOptions.first;
-      });
-    } else {
-      StringHelper.showErrorDialog(context, response.message!);
-    }
-  }
 
   Future<void> loadAssets() async {
     final fontData = await rootBundle.load("assets/fonts/Vazirmatn-Regular.ttf");
@@ -278,6 +259,7 @@ class _GetCarProblemPageState extends State<GetCarProblemPage>
     if(carResponse.status == 'success') {
       final selectedCar = carResponse.data;
       if (selectedCar != null) {
+        final customerId = carLog?.customer?.id ?? "";
         final logRequest = CarRepairLogRequestDTO(
           carId: selectedCar!.id,
           creatorUserId: user!.userId,
@@ -285,6 +267,7 @@ class _GetCarProblemPageState extends State<GetCarProblemPage>
           taskStatusId: taskStatusLog!.id!,
           dateTime: DateTime.now(),
           problemReportId: null,
+          customerId: customerId
         );
 
         final response = await CarRepairLogApi().createLog(logRequest);
@@ -353,7 +336,7 @@ class _GetCarProblemPageState extends State<GetCarProblemPage>
           return;
         }
         if (taskStatus.status == 'success' && taskStatus.data != null) {
-
+          final customerId = carLog?.customer?.id ?? "";
           final logRequest = CarRepairLogRequestDTO(
             carId: createdProblemReport.carId,
             creatorUserId: user.userId,
@@ -361,6 +344,7 @@ class _GetCarProblemPageState extends State<GetCarProblemPage>
             taskStatusId: taskStatus.data!.id!,
             dateTime: DateTime.now(),
             problemReportId: createdProblemReport.id,
+            customerId: customerId
           );
 
           final logResponse = await CarRepairLogApi().createLog(logRequest);
@@ -487,27 +471,6 @@ class _GetCarProblemPageState extends State<GetCarProblemPage>
                       ),
                       textCapitalization: TextCapitalization.characters,
                     ),
-                    const SizedBox(height: 10),
-                    if (user != null && user!.permission.permissionName == 'Yönetici')
-                      DropdownButtonFormField<String>(
-                        value: selectedStatus,
-                        isExpanded: true,
-                        decoration: const InputDecoration(
-                          labelText: "Durum Seçin",
-                          border: OutlineInputBorder(),
-                        ),
-                        items: statusOptions
-                            .map((status) => DropdownMenuItem(
-                          value: status,
-                          child: Text(status),
-                        ))
-                            .toList(),
-                        onChanged: (value) {
-                          setState(() {
-                            selectedStatus = value;
-                          });
-                        },
-                      ),
                     const SizedBox(height: 10),
                     ElevatedButton(
                       onPressed: searchPlate,

@@ -25,6 +25,9 @@ class ApiEndpoints {
   static const String updateTaskStatus = "$_baseUrl/task_status/updateTaskStatus";
   static const String deleteTaskStatus = "$_baseUrl/task_status/deleteTaskStatus";
 
+  static const String customerUrl = "$_baseUrl/customers";
+  static const String customerSearchByName = "$_baseUrl/customers/search?name=";
+
   static const String createCarProblemReport = "$_baseUrl/car-problem-report/create";
   static const String createCarProblemAll = "$_baseUrl/car-problem-report/all";
   static const String createCarProblemID = "$_baseUrl/car-problem-report";

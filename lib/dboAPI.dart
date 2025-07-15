@@ -58,7 +58,6 @@ class dboAPI {
       final serverPort = data['serverPort'];
       final urlAddress = 'http://$serverIP:$serverPort';
       final url = Uri.parse('$urlAddress$endpoint');
-      print('Request URL: $url');
       return url;
     } else {
       return null;

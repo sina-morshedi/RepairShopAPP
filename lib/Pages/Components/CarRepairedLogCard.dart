@@ -50,6 +50,13 @@ class CarRepairedLogCard extends StatelessWidget {
               SelectableText('\nAraç şikayeti: ${log.problemReport?.problemSummary ?? "-"}'),
 
               const SizedBox(height: 12),
+              if (log.customer != null && log.customer!.fullName.isNotEmpty) ...[
+                SelectableText('Araç sahibi: ${log.customer!.fullName ?? "-"}'),
+                SelectableText('Telefon numara: ${log.customer!.phone ?? "-"}'),
+                SelectableText('Adres: ${log.customer!.address ?? "-"}'),
+              ],
+
+              const SizedBox(height: 12),
               if (log.description != null && log.description!.isNotEmpty && log.taskStatus.taskStatusName == 'DURAKLAT') ...[
                 const Text('Görev duraklama sebebi:', style: TextStyle(fontWeight: FontWeight.bold)),
                 const SizedBox(height: 4),

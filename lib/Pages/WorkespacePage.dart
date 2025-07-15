@@ -292,6 +292,7 @@ class _WorkespacePageState extends State<WorkespacePage> {
       return;
     }
 
+    final customerId = log?.customer?.id ?? "";
     final dto = CarRepairLogRequestDTO(
       carId: log.carInfo.id,
       creatorUserId: log.creatorUser.userId,
@@ -301,6 +302,7 @@ class _WorkespacePageState extends State<WorkespacePage> {
       dateTime: DateTime.now(),
       problemReportId: log.problemReport?.id,
       partsUsed: partsUsed.isEmpty ? null : partsUsed,
+      customerId: customerId,
     );
 
     final response = await CarRepairLogApi().updateLog(log.id!, dto);

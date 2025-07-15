@@ -204,6 +204,7 @@ class _InvoiceDailyState extends State<InvoiceDaily> {
       );
     }
 
+    final customerId = log?.customer?.id ?? "";
     final request = CarRepairLogRequestDTO(
       carId: log!.carInfo.id,
       creatorUserId: user!.userId,
@@ -214,13 +215,15 @@ class _InvoiceDailyState extends State<InvoiceDaily> {
       partsUsed: parts,
       paymentRecords: updatedPayments,
       dateTime: DateTime.now(),
+      customerId: customerId,
     );
 
     if(selectedTaskStatusId == responseFaturaOdeme.data!.id){
       _needLoadData = false;
+      final customerId = log?.customer?.id ?? "";
       final requestupdate = CarRepairLogRequestDTO(
         carId: log!.carInfo.id,
-        creatorUserId: user!.userId,
+        creatorUserId: user.userId,
         assignedUserId: log!.assignedUser!.userId,
         description: log!.description,
         taskStatusId: responseFatura.data!.id!,
@@ -228,6 +231,7 @@ class _InvoiceDailyState extends State<InvoiceDaily> {
         partsUsed: parts,
         paymentRecords: updatedPayments,
         dateTime: DateTime.now(),
+        customerId: customerId,
       );
 
       final responseUpdate = await CarRepairLogApi().updateLog(log!.id!, requestupdate);
