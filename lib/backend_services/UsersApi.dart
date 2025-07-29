@@ -1,11 +1,16 @@
 part of 'backend_services.dart';
 
 class UserApi {
+
+
   Future<ApiResponse<List<UserProfileDTO>>> getAllUsers() async {
     final String backendUrl = ApiEndpoints.getAllProfile;
 
     try {
-      final response = await http.get(Uri.parse(backendUrl));
+      final response = await http.get(
+        Uri.parse(backendUrl),
+        headers: BackendUtils.buildHeader(),
+      );
 
       if (response.statusCode == 200) {
         final List<dynamic> dataList = jsonDecode(response.body);
@@ -36,7 +41,7 @@ class UserApi {
     try {
       final response = await http.put(
         Uri.parse(backendUrl),
-        headers: {"Content-Type": "application/json"},
+        headers: BackendUtils.buildHeader(),
         body: jsonEncode(dto.toJson()),
       );
 
@@ -65,7 +70,7 @@ class UserApi {
     try {
       final response = await http.delete(
         Uri.parse(backendUrl),
-        headers: {"Content-Type": "application/json"},
+        headers: BackendUtils.buildHeader(),
         body: jsonEncode({"userId": userId}),
       );
 

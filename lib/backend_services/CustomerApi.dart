@@ -6,7 +6,10 @@ class CustomerApi {
     final String url = "${ApiEndpoints.customerUrl}/";
 
     try {
-      final response = await http.get(Uri.parse(url));
+      final response = await http.get(
+        Uri.parse(url),
+        headers: BackendUtils.buildHeader(),
+      );
 
       if (response.statusCode == 200) {
         final List<dynamic> dataList = jsonDecode(response.body);
@@ -20,7 +23,7 @@ class CustomerApi {
       } else {
         return ApiResponse(
           status: 'error',
-          message: '${response.body}',
+          message: response.body,
         );
       }
     } catch (e) {
@@ -36,7 +39,10 @@ class CustomerApi {
     final String url = "${ApiEndpoints.customerSearchByName}$name";
 
     try {
-      final response = await http.get(Uri.parse(url));
+      final response = await http.get(
+        Uri.parse(url),
+        headers: BackendUtils.buildHeader(),
+      );
 
       if (response.statusCode == 200) {
         final List<dynamic> dataList = jsonDecode(response.body);
@@ -50,7 +56,7 @@ class CustomerApi {
       } else {
         return ApiResponse(
           status: 'error',
-          message: '${response.body}',
+          message: response.body,
         );
       }
     } catch (e) {
@@ -61,7 +67,6 @@ class CustomerApi {
     }
   }
 
-
   // Insert new customer
   Future<ApiResponse<CustomerDTO>> insertCustomer(CustomerDTO customer) async {
     final String url = "${ApiEndpoints.customerUrl}/";
@@ -69,7 +74,7 @@ class CustomerApi {
     try {
       final response = await http.post(
         Uri.parse(url),
-        headers: {"Content-Type": "application/json"},
+        headers: BackendUtils.buildHeader(),
         body: jsonEncode(customer.toJson()),
       );
 
@@ -82,7 +87,7 @@ class CustomerApi {
       } else {
         return ApiResponse(
           status: 'error',
-          message: '${response.body}',
+          message: response.body,
         );
       }
     } catch (e) {
@@ -107,7 +112,7 @@ class CustomerApi {
     try {
       final response = await http.put(
         Uri.parse(url),
-        headers: {"Content-Type": "application/json"},
+        headers: BackendUtils.buildHeader(),
         body: jsonEncode(customer.toJson()),
       );
 
@@ -136,7 +141,10 @@ class CustomerApi {
     final String url = "${ApiEndpoints.customerUrl}/$id";
 
     try {
-      final response = await http.delete(Uri.parse(url));
+      final response = await http.delete(
+        Uri.parse(url),
+        headers: BackendUtils.buildHeader(),
+      );
 
       if (response.statusCode == 200) {
         return ApiResponse(status: 'success');
@@ -159,7 +167,10 @@ class CustomerApi {
     final String url = "${ApiEndpoints.customerUrl}/$id";
 
     try {
-      final response = await http.get(Uri.parse(url));
+      final response = await http.get(
+        Uri.parse(url),
+        headers: BackendUtils.buildHeader(),
+      );
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
@@ -170,7 +181,7 @@ class CustomerApi {
       } else {
         return ApiResponse(
           status: 'error',
-          message: '${response.body}',
+          message: response.body,
         );
       }
     } catch (e) {

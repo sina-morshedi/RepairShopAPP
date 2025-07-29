@@ -1,7 +1,7 @@
 import 'package:autonetwork/DTO/CarRepairLogResponseDTO.dart';
 import 'package:autonetwork/Pages/Components/CarRepairLogListView.dart';
 import 'package:flutter/material.dart';
-import '../type.dart';
+
 import 'dart:ui';
 import '../dboAPI.dart';
 import 'user_prefs.dart';

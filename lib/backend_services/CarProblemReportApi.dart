@@ -6,28 +6,22 @@ class CarProblemReportApi {
     final String backendUrl = ApiEndpoints.createCarProblemAll;
 
     try {
-      final response = await http.get(Uri.parse(backendUrl));
+      final response = await http.get(
+        Uri.parse(backendUrl),
+        headers: BackendUtils.buildHeader(),
+      );
 
       if (response.statusCode == 200) {
         final List<dynamic> dataList = jsonDecode(response.body);
         final List<CarProblemReportRequestDTO> reports =
         dataList.map((e) => CarProblemReportRequestDTO.fromJson(e)).toList();
 
-        return ApiResponse(
-          status: 'success',
-          data: reports,
-        );
+        return ApiResponse(status: 'success', data: reports);
       } else {
-        return ApiResponse(
-          status: 'error',
-          message: response.body,
-        );
+        return ApiResponse(status: 'error', message: response.body);
       }
     } catch (e) {
-      return ApiResponse(
-        status: 'error',
-        message: 'Exception occurred: $e',
-      );
+      return ApiResponse(status: 'error', message: 'Exception occurred: $e');
     }
   }
 
@@ -35,39 +29,31 @@ class CarProblemReportApi {
     final String backendUrl = '${ApiEndpoints.createCarProblemID}/$id';
 
     try {
-      final response = await http.get(Uri.parse(backendUrl));
+      final response = await http.get(
+        Uri.parse(backendUrl),
+        headers: BackendUtils.buildHeader(),
+      );
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         final report = CarProblemReportRequestDTO.fromJson(data);
 
-        return ApiResponse(
-          status: 'success',
-          data: report,
-        );
+        return ApiResponse(status: 'success', data: report);
       } else {
-        return ApiResponse(
-          status: 'error',
-          message: response.body,
-        );
+        return ApiResponse(status: 'error', message: response.body);
       }
     } catch (e) {
-      return ApiResponse(
-        status: 'error',
-        message: 'Exception occurred: $e',
-      );
+      return ApiResponse(status: 'error', message: 'Exception occurred: $e');
     }
   }
 
-
-
   Future<ApiResponse<CarProblemReportRequestDTO>> createReport(CarProblemReportRequestDTO report) async {
-    final String backendUrl = ApiEndpoints.createCarProblemReport;;
+    final String backendUrl = ApiEndpoints.createCarProblemReport;
 
     try {
       final response = await http.post(
         Uri.parse(backendUrl),
-        headers: {"Content-Type": "application/json"},
+        headers: BackendUtils.buildHeader(),
         body: jsonEncode(report.toJson()),
       );
 
@@ -75,27 +61,14 @@ class CarProblemReportApi {
         final Map<String, dynamic> json = jsonDecode(response.body);
         final createdReport = CarProblemReportRequestDTO.fromJson(json);
 
-        return ApiResponse(
-          status: 'success',
-          data: createdReport,
-        );
+        return ApiResponse(status: 'success', data: createdReport);
       } else {
-        return ApiResponse(
-          status: 'error',
-          data: null,
-          message: response.body,
-        );
+        return ApiResponse(status: 'error', data: null, message: response.body);
       }
     } catch (e) {
-      return ApiResponse(
-        status: 'error',
-        data: null,
-        message: 'Exception occurred: $e',
-      );
+      return ApiResponse(status: 'error', data: null, message: 'Exception occurred: $e');
     }
   }
-
-
 
   Future<ApiResponse<String>> updateReport(CarProblemReportRequestDTO report) async {
     final String backendUrl = '${ApiEndpoints.createCarProblemUpdate}/${report.id}';
@@ -103,29 +76,19 @@ class CarProblemReportApi {
     try {
       final response = await http.put(
         Uri.parse(backendUrl),
-        headers: {"Content-Type": "application/json"},
+        headers: BackendUtils.buildHeader(),
         body: jsonEncode(report.toJson()),
       );
 
       if (response.statusCode == 200) {
-        return ApiResponse(
-          status: 'success',
-          message: response.body,
-        );
+        return ApiResponse(status: 'success', message: response.body);
       } else {
-        return ApiResponse(
-          status: 'error',
-          message: response.body,
-        );
+        return ApiResponse(status: 'error', message: response.body);
       }
     } catch (e) {
-      return ApiResponse(
-        status: 'error',
-        message: 'Exception occurred: $e',
-      );
+      return ApiResponse(status: 'error', message: 'Exception occurred: $e');
     }
   }
-
 
   Future<ApiResponse<String>> deleteReport(String id) async {
     final String backendUrl = '${ApiEndpoints.createCarProblemDelete}/$id';
@@ -133,25 +96,16 @@ class CarProblemReportApi {
     try {
       final response = await http.delete(
         Uri.parse(backendUrl),
-        headers: {"Content-Type": "application/json"},
+        headers: BackendUtils.buildHeader(),
       );
 
       if (response.statusCode == 200) {
-        return ApiResponse(
-          status: 'success',
-          message: response.body,
-        );
+        return ApiResponse(status: 'success', message: response.body);
       } else {
-        return ApiResponse(
-          status: 'error',
-          message: response.body,
-        );
+        return ApiResponse(status: 'error', message: response.body);
       }
     } catch (e) {
-      return ApiResponse(
-        status: 'error',
-        message: 'Exception occurred: $e',
-      );
+      return ApiResponse(status: 'error', message: 'Exception occurred: $e');
     }
   }
 }

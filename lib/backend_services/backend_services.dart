@@ -1,26 +1,37 @@
 library backend_service;
 
 import 'package:flutter/material.dart';
+import '../DTO/CarInfoDTO.dart';
+import '../DTO/SettingStatusDTO.dart';
+import '../DTO/UserProfileDTO.dart';
+import '../DTO/RolesDTO.dart';
+import '../DTO/CustomerDTO.dart';
 
 import '../DTO/users.dart';
 import '../DTO/roles.dart';
 import '../DTO/permissions.dart';
-import '../DTO/UserProfileDTO.dart';
-import '../DTO/CarInfoDTO.dart';
-import '../DTO/CarInfo.dart';
-import '../DTO/TaskStatusDTO.dart';
-import '../DTO/RolesDTO.dart';
-import '../DTO/CarProblemReportRequestDTO.dart';
-import '../DTO/CarProblemReportResponseDTO.dart';
-import '../DTO/CarRepairLogRequestDTO.dart';
-import '../DTO/CarRepairLogResponseDTO.dart';
-import '../DTO/UpdateUserDTO.dart';
-import '../DTO/TaskStatusUserRequestDTO.dart';
-import '../DTO/FilterRequestDTO.dart';
-import '../DTO/CustomerDTO.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'ApiEndpoints.dart';
+import '../DTO/CarInfo.dart';
+import '../DTO/TaskStatusDTO.dart';
+import '../DTO/FilterRequestDTO.dart';
+import '../DTO/UpdateUserDTO.dart';
+import '../DTO/CarProblemReportRequestDTO.dart';
+import '../DTO/CarRepairLogResponseDTO.dart';
+import '../DTO/CarRepairLogRequestDTO.dart';
+import '../DTO/TaskStatusCountDTO.dart';
+import '../DTO/InventoryItemDTO.dart';
+import '../DTO/InventoryChangeRequestDTO.dart';
+import '../DTO/InventoryTransactionResponseDTO.dart';
+import '../DTO/InventoryTransactionRequestDTO.dart';
+import '../DTO/InventoryTransactionType.dart';
+import '../DTO/TaskStatusUserRequestDTO.dart';
+import '../DTO/InventorySaleLogDTO.dart';
+import 'ApiEndpoints.dart';
+import 'backend_utils.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 
 part 'TaskStatusApi.dart';
 part 'RoleApi.dart';
@@ -28,13 +39,21 @@ part 'UsersApi.dart';
 part 'CarProblemReportApi.dart';
 part 'CarRepairLogApi.dart';
 part 'CustomerApi.dart';
+part 'InventoryApi.dart';
+part 'InventoryTransactionApi.dart';
+part 'SettingStatusApi.dart';
+part 'CarInfoApi.dart';
+part 'InventorySaleLogApi.dart';
 
 class backend_services {
   Future<ApiResponse<List<UserProfileDTO>>> fetchAllProfile() async {
     final String backendUrl = ApiEndpoints.getAllProfile;
 
     try {
-      final response = await http.get(Uri.parse(backendUrl));
+      final response = await http.get(
+        Uri.parse(backendUrl),
+        headers: BackendUtils.buildHeader(),
+      );
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         final List<dynamic> decodedList = jsonDecode(response.body);
@@ -43,21 +62,12 @@ class backend_services {
             .map((jsonItem) => UserProfileDTO.fromJson(jsonItem))
             .toList();
 
-        return ApiResponse(
-          status: 'success',
-          data: logs,
-        );
-      }else {
-        return ApiResponse(
-          status: 'error',
-          message: response.body,
-        );
+        return ApiResponse(status: 'success', data: logs);
+      } else {
+        return ApiResponse(status: 'error', message: response.body);
       }
     } catch (e) {
-      return ApiResponse(
-        status: 'error',
-        message: 'Exception occurred: $e',
-      );
+      return ApiResponse(status: 'error', message: 'Exception occurred: $e');
     }
   }
 
@@ -65,7 +75,10 @@ class backend_services {
     final String backendUrl = ApiEndpoints.getAllPermissions;
 
     try {
-      final response = await http.get(Uri.parse(backendUrl));
+      final response = await http.get(
+        Uri.parse(backendUrl),
+        headers: BackendUtils.buildHeader(),
+      );
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         final List<dynamic> decodedList = jsonDecode(response.body);
@@ -74,21 +87,12 @@ class backend_services {
             .map((jsonItem) => permissions.fromJson(jsonItem))
             .toList();
 
-        return ApiResponse(
-          status: 'success',
-          data: logs,
-        );
-      }else {
-        return ApiResponse(
-          status: 'error',
-          message: response.body,
-        );
+        return ApiResponse(status: 'success', data: logs);
+      } else {
+        return ApiResponse(status: 'error', message: response.body);
       }
     } catch (e) {
-      return ApiResponse(
-        status: 'error',
-        message: 'Exception occurred: $e',
-      );
+      return ApiResponse(status: 'error', message: 'Exception occurred: $e');
     }
   }
 
@@ -96,7 +100,10 @@ class backend_services {
     final String backendUrl = ApiEndpoints.getAllRoles;
 
     try {
-      final response = await http.get(Uri.parse(backendUrl));
+      final response = await http.get(
+        Uri.parse(backendUrl),
+        headers: BackendUtils.buildHeader(),
+      );
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         final List<dynamic> decodedList = jsonDecode(response.body);
@@ -105,10 +112,7 @@ class backend_services {
             .map((jsonItem) => roles.fromJson(jsonItem))
             .toList();
 
-        return ApiResponse(
-          status: 'success',
-          data: logs,
-        );
+        return ApiResponse(status: 'success', data: logs);
       } else {
         return ApiResponse(
           status: 'error',
@@ -116,19 +120,18 @@ class backend_services {
         );
       }
     } catch (e) {
-      return ApiResponse(
-        status: 'error',
-        message: 'Exception occurred: $e',
-      );
+      return ApiResponse(status: 'error', message: 'Exception occurred: $e');
     }
   }
-
 
   Future<int> countAllMembers({BuildContext? context}) async {
     final String backendUrl = ApiEndpoints.countAllMembers;
 
     try {
-      final response = await http.get(Uri.parse(backendUrl));
+      final response = await http.get(
+        Uri.parse(backendUrl),
+        headers: BackendUtils.buildHeader(),
+      );
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
@@ -145,99 +148,13 @@ class backend_services {
     }
   }
 
-  Future<ApiResponse<CarInfoDTO>> getCarInfoByLicensePlate(String licensePlate) async {
-    final uri = Uri.parse('${ApiEndpoints.getCarInfo}/$licensePlate');
-
-    try {
-      final response = await http.get(uri);
-
-      final data = jsonDecode(response.body);
-      final jsonData = jsonDecode(response.body);
-
-      if (response.statusCode == 200) {
-        return ApiResponse<CarInfoDTO>(
-          status: jsonData['status'] ?? 'success',
-          data: CarInfoDTO.fromJson(jsonData),
-          message: jsonData['idOrMessage'] ?? '',
-        );
-      } else {
-        return ApiResponse(
-          status: data['status'] ?? 'error',
-          message: data['idOrMessage'] ?? 'Bilinmeyen hata',
-        );
-      }
-    } catch (e) {
-      return ApiResponse(status: "error", message: "Sunucuya erişilemedi: $e");
-    }
-  }
-
-
-  Future<ApiResponse<void>> updateCarInfoByLicensePlate(String licensePlate, CarInfo updatedCar) async {
-    final response = await http.put(
-      Uri.parse('${ApiEndpoints.updateCarInfo}/$licensePlate'),
-      headers: {"Content-Type": "application/json"},
-      body: jsonEncode(updatedCar.toJson()),
-    );
-
-    try {
-      final jsonData = jsonDecode(response.body);
-
-      return ApiResponse<void>(
-        status: jsonData['status'] ?? (response.statusCode == 200 ? 'success' : 'error'),
-        message: jsonData['idOrMessage'] ?? '',
-      );
-    } catch (e) {
-      return ApiResponse<void>(
-        status: 'error',
-        message: 'Exception occurred: $e',
-      );
-    }
-  }
-
-
-  Future<ApiResponse> insertCarInfo(CarInfo carInfo) async {
-    final String url = ApiEndpoints.registerCar;
-
-    try {
-      final response = await http.post(
-        Uri.parse(url),
-        headers: {"Content-Type": "application/json"},
-        body: jsonEncode(carInfo.toJson()),
-      );
-
-      if (response.statusCode == 201 || response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        return ApiResponse.fromJson(data);
-      } else {
-        // For non-200 status code, try to parse error message from body if any
-        try {
-          final data = jsonDecode(response.body);
-          return ApiResponse(
-            status: data['status'] ?? 'error',
-            message: data['idOrMessage'] ?? 'Unknown error',
-          );
-        } catch (_) {
-          return ApiResponse(
-            status: 'error',
-            message: 'Failed with status code ${response.statusCode}',
-          );
-        }
-      }
-    } catch (e) {
-      return ApiResponse(
-        status: 'error',
-        message: 'Exception occurred: $e',
-      );
-    }
-  }
-
   Future<ApiResponse> insertTaskStatus(TaskStatusDTO taskStatus) async {
     final String url = ApiEndpoints.insertTaskStatus;
 
     try {
       final response = await http.post(
         Uri.parse(url),
-        headers: {"Content-Type": "application/json"},
+        headers: BackendUtils.buildHeader(),
         body: jsonEncode(taskStatus.toJson()),
       );
 
@@ -252,17 +169,11 @@ class backend_services {
             message: data['idOrMessage'] ?? 'Unknown error',
           );
         } catch (_) {
-          return ApiResponse(
-            status: 'error',
-            message: '${response.body}',
-          );
+          return ApiResponse(status: 'error', message: '${response.body}');
         }
       }
     } catch (e) {
-      return ApiResponse(
-        status: 'error',
-        message: 'Exception occurred: $e',
-      );
+      return ApiResponse(status: 'error', message: 'Exception occurred: $e');
     }
   }
 
@@ -288,33 +199,21 @@ class backend_services {
       "permissionId": permissionId,
       "permissionName": permissionName,
     });
+
     try {
       final response = await http.post(
         Uri.parse(backendUrl),
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: BackendUtils.buildHeader(),
         body: body,
       );
+
       if (response.statusCode == 201 || response.statusCode == 200) {
-        return ApiResponse(
-          status: 'success',
-          message: '${response.body}',
-        );
+        return ApiResponse(status: 'success', message: response.body);
       } else {
-        return ApiResponse(
-          status: 'error',
-          message: '${response.body}',
-        );
+        return ApiResponse(status: 'error', message: response.body);
       }
     } catch (e) {
-      return ApiResponse(
-        status: 'error',
-        message: 'Exception occurred: $e',
-      );
+      return ApiResponse(status: 'error', message: 'Exception occurred: $e');
     }
   }
-
 }
-
-

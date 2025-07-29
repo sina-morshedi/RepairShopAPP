@@ -1,8 +1,8 @@
 import 'dart:ui';
 import 'package:autonetwork/DTO/CarInfoDTO.dart';
 import 'package:flutter/material.dart';
-import '../../dboAPI.dart';
 import '../../type.dart';
+import '../../dboAPI.dart';
 import '../../backend_services/backend_services.dart';
 
 class Sharecomponents{
@@ -22,7 +22,7 @@ class Sharecomponents{
 
 
   static Future<CarInfoDTO?> searchByPlate(BuildContext context, String plate) async {
-    final response = await backend_services()
+    final response = await CarInfoApi()
         .getCarInfoByLicensePlate(plate.toUpperCase());
     if (response.status == 'success' && response.data != null) {
       return response.data;

@@ -75,7 +75,7 @@ class StringHelper {
   }
 
 
-  static void showInfoDialog(BuildContext context, String errorMessage) {
+  static Future<void> showInfoDialog(BuildContext context, String errorMessage) async{
     showDialog(
       context: context,
       builder: (context) {

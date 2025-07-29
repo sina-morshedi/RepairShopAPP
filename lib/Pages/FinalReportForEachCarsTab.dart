@@ -28,30 +28,24 @@ class _FinalReportForEachCarTabState extends State<FinalReportForEachCarTab> wit
 
   List<TaskStatusDTO> taskStatuses = [];
   List<CarRepairLogResponseDTO> filteredReports = [];
-  UserProfileDTO? user;
   String? permissionName;
 
   @override
   void initState() {
     super.initState();
     fetchLastLogForEachCar();
-    _loadUser();
+    loadUserProfile();
   }
-
-  void _loadUser() async {
-    user = await UserPrefs.getUserWithID();
-    if (!mounted) return; // ✅ اضافه شود
-    setState(() {
-      permissionName  = user!.permission.permissionName ?? "";
-    });
+  void loadUserProfile() async{
+    final currentUser = await UserPrefs.getUserWithID();
+    permissionName  = currentUser!.permission.permissionName ?? "";
   }
-
 
   Future<void> fetchLastLogForEachCar() async {
     final response = await CarRepairLogApi().getLatestLogForEachCar();
-    if (!mounted) return; // ✅ اضافه شود
 
     if (response.status == 'success' && response.data != null) {
+
       setState(() {
         filteredReports = List<CarRepairLogResponseDTO>.from(response.data!);
       });
@@ -61,12 +55,10 @@ class _FinalReportForEachCarTabState extends State<FinalReportForEachCarTab> wit
     }
   }
 
-
-  void ShowDetailsDialog(CarRepairLogResponseDTO log) async {
-    if (!mounted) return; // ✅ ایمن‌تر
+  void ShowDetailsDialog(CarRepairLogResponseDTO log)async{
     StringHelper.ShowDetailsLogDialog(context, log);
-  }
 
+  }
 
   @override
   Widget build(BuildContext context) {

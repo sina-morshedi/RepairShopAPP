@@ -20,7 +20,10 @@ import '../DTO/PartUsed.dart';
 
 
 class InvoiceDaily extends StatefulWidget {
-  const InvoiceDaily({super.key});
+  final String? plate;
+  final VoidCallback? onConfirmed;
+
+  const InvoiceDaily({super.key, this.plate, this.onConfirmed,});
 
   @override
   _InvoiceDailyState createState() => _InvoiceDailyState();
@@ -31,6 +34,7 @@ class _InvoiceDailyState extends State<InvoiceDaily> {
   pw.MemoryImage? logoImage;
   final TextEditingController _plateController = TextEditingController();
   CarRepairLogResponseDTO? log;
+  bool showInvoiceParam = true;
 
   List<PartUsed> parts = [];
   List<double> totalPice = [];
@@ -55,7 +59,13 @@ class _InvoiceDailyState extends State<InvoiceDaily> {
   void initState() {
     super.initState();
     loadAssets();
+
+    if (widget.plate != null && widget.plate!.isNotEmpty) {
+      _plateController.text = widget.plate!.toUpperCase();
+      _searchByPlate(); // به‌صورت خودکار جستجو رو انجام بده
+    }
   }
+
 
   @override
   void dispose() {
@@ -104,9 +114,7 @@ class _InvoiceDailyState extends State<InvoiceDaily> {
 
   Future<void> loadAssets() async {
     final fontData = await rootBundle.load("assets/fonts/Vazirmatn-Regular.ttf");
-    final imageData = await rootBundle.load("assets/images/invoice-logo.png");
-
-    if (!mounted) return;
+    final imageData = await rootBundle.load("assets/images/logo.png");
 
     setState(() {
       customFont = pw.Font.ttf(fontData);
@@ -114,35 +122,27 @@ class _InvoiceDailyState extends State<InvoiceDaily> {
     });
   }
 
-
   Future<void> _searchByPlate() async {
-    FocusScope.of(context).unfocus();
     _isAmountPaidEnabled = true;
     final plate = _plateController.text.trim().toUpperCase();
     if (plate.isEmpty) return;
 
     final response = await CarRepairLogApi().getLatestLogByLicensePlate(plate);
-
-    if (!mounted) return;
-
     if (response.status == 'success') {
       setState(() {
         log = response.data;
       });
 
-      if (!mounted) return;
-      if (response.data!.taskStatus.taskStatusName == "GÖREV YOK") {
+      final partUsedList = response.data!.partsUsed;
+      if(response.data!.taskStatus.taskStatusName == "GÖREV YOK"){
         StringHelper.showErrorDialog(context, 'Araç girişi kaydedilmemiştir.');
         return;
       }
-
-      if (response.data!.taskStatus.taskStatusName != "İŞ BİTTİ" &&
-          response.data!.taskStatus.taskStatusName != "FATURA") {
+      if(response.data!.taskStatus.taskStatusName != "İŞ BİTTİ"
+          && response.data!.taskStatus.taskStatusName != "FATURA"){
         StringHelper.showErrorDialog(context, "${plate} numaralı plakanın işi henüz bitmedi");
         return;
       }
-
-      final partUsedList = response.data!.partsUsed;
       if (partUsedList != null && partUsedList.isNotEmpty) {
         parts = partUsedList.map((part) {
           final price = part.partPrice?.toDouble() ?? 0.0;
@@ -153,21 +153,21 @@ class _InvoiceDailyState extends State<InvoiceDaily> {
             quantity: part.quantity ?? 1,
           );
         }).toList();
+
       } else {
+        // اگر partsUsed خالی بود، می‌تونید مقدار پیش‌فرض بذارید یا کاری نکنید
         parts = [];
       }
 
       _syncControllersWithParts();
       _calcInvoicePrice();
     } else {
-      if (!mounted) return;
       StringHelper.showErrorDialog(context, response.message!);
     }
   }
 
+
   void _updateLog()async{
-    FocusScope.of(context).unfocus();
-    bool _needLoadData = true;
     final double totalInvoice = parts.fold(0.0, (sum, part) => sum + part.partPrice * part.quantity);
 
     final previousPayments = (log?.paymentRecords ?? []).fold<double>(
@@ -203,7 +203,6 @@ class _InvoiceDailyState extends State<InvoiceDaily> {
         ),
       );
     }
-
     final customerId = log?.customer?.id ?? "";
     final request = CarRepairLogRequestDTO(
       carId: log!.carInfo.id,
@@ -219,11 +218,10 @@ class _InvoiceDailyState extends State<InvoiceDaily> {
     );
 
     if(selectedTaskStatusId == responseFaturaOdeme.data!.id){
-      _needLoadData = false;
       final customerId = log?.customer?.id ?? "";
       final requestupdate = CarRepairLogRequestDTO(
         carId: log!.carInfo.id,
-        creatorUserId: user.userId,
+        creatorUserId: user!.userId,
         assignedUserId: log!.assignedUser!.userId,
         description: log!.description,
         taskStatusId: responseFatura.data!.id!,
@@ -239,6 +237,7 @@ class _InvoiceDailyState extends State<InvoiceDaily> {
         StringHelper.showInfoDialog(context, 'Bilgiler kaydedildi.');
         setState(() {
           log = responseUpdate.data;
+          showInvoiceParam = false;
         });
       } else {
         StringHelper.showErrorDialog(context, responseUpdate.message!);
@@ -279,8 +278,6 @@ class _InvoiceDailyState extends State<InvoiceDaily> {
           StringHelper.showErrorDialog(context, response.message!);
       }
     }
-    if(_needLoadData)
-      _searchByPlate();
   }
 
   void _calcInvoicePrice() {
@@ -350,8 +347,6 @@ class _InvoiceDailyState extends State<InvoiceDaily> {
     );
   }
 
-
-
   Widget buildPartsInputList() {
     if (parts.isEmpty) {
       return const SizedBox.shrink();
@@ -366,9 +361,104 @@ class _InvoiceDailyState extends State<InvoiceDaily> {
           return Padding(
             key: ValueKey(part),
             padding: const EdgeInsets.symmetric(vertical: 6),
-            child: Row(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Column(
+                // ردیف اول: نام و تعداد
+                Row(
+                  children: [
+                    Expanded(
+                      flex: 6,
+                      child: TextFormField(
+                        controller: nameControllers[index],
+                        decoration: const InputDecoration(
+                          labelText: 'Parça Adı',
+                          border: OutlineInputBorder(),
+                        ),
+                        onChanged: (val) {
+                          parts[index] = PartUsed(
+                            partName: val,
+                            partPrice: parts[index].partPrice,
+                            quantity: parts[index].quantity,
+                          );
+                        },
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      flex: 2,
+                      child: TextFormField(
+                        controller: quantityControllers[index],
+                        keyboardType: TextInputType.number,
+                        textAlign: TextAlign.center,
+                        decoration: const InputDecoration(
+                          labelText: 'Adet',
+                          border: OutlineInputBorder(),
+                        ),
+                        onChanged: (value) {
+                          final newQty = int.tryParse(value) ?? 1;
+                          parts[index] = PartUsed(
+                            partName: parts[index].partName,
+                            partPrice: parts[index].partPrice,
+                            quantity: newQty,
+                          );
+                          totalPriceControllers[index].text =
+                              (newQty * parts[index].partPrice).toString();
+                          _calcInvoicePrice();
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+
+                const SizedBox(height: 8),
+
+                // ردیف دوم: قیمت واحد و قیمت کل
+                Row(
+                  children: [
+                    Expanded(
+                      flex: 2,
+                      child: TextFormField(
+                        controller: priceControllers[index],
+                        keyboardType: TextInputType.number,
+                        textAlign: TextAlign.right,
+                        decoration: const InputDecoration(
+                          labelText: 'Birim Fiyat',
+                          border: OutlineInputBorder(),
+                        ),
+                        onChanged: (val) {
+                          final newPrice = double.tryParse(val) ?? 0;
+                          parts[index] = PartUsed(
+                            partName: parts[index].partName,
+                            partPrice: newPrice,
+                            quantity: parts[index].quantity,
+                          );
+                          totalPriceControllers[index].text =
+                              (parts[index].quantity * newPrice).toString();
+                          _calcInvoicePrice();
+                        },
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      flex: 2,
+                      child: TextFormField(
+                        controller: totalPriceControllers[index],
+                        readOnly: true,
+                        textAlign: TextAlign.right,
+                        decoration: const InputDecoration(
+                          labelText: 'Toplam',
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+
+                const SizedBox(height: 4),
+
+                // ردیف سوم: آیکون ها
+                Row(
                   children: [
                     if (index == parts.length - 1) ...[
                       IconButton(
@@ -405,111 +495,9 @@ class _InvoiceDailyState extends State<InvoiceDaily> {
                     ],
                   ],
                 ),
-                Expanded(
-                  flex: 7,
-                  child: Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      border: Border.all(color: Colors.grey.shade400),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Column(
-                      children: [
-                        Row(
-                          children: [
-                            Expanded(
-                              flex: 5,
-                              child: TextFormField(
-                                controller: nameControllers[index],
-                                decoration: const InputDecoration(
-                                  labelText: 'Parça Adı',
-                                  border: OutlineInputBorder(),
-                                ),
-                                onChanged: (val) {
-                                  parts[index] = PartUsed(
-                                    partName: val,
-                                    partPrice: parts[index].partPrice,
-                                    quantity: parts[index].quantity,
-                                  );
-                                },
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              flex: 2,
-                              child: TextFormField(
-                                controller: quantityControllers[index],
-                                keyboardType: TextInputType.number,
-                                textAlign: TextAlign.center,
-                                decoration: const InputDecoration(
-                                  labelText: 'Adet',
-                                  border: OutlineInputBorder(),
-                                ),
-                                onChanged: (value) {
-                                  final newQty = int.tryParse(value) ?? 1;
-                                  parts[index] = PartUsed(
-                                    partName: parts[index].partName,
-                                    partPrice: parts[index].partPrice,
-                                    quantity: newQty,
-                                  );
-                                  totalPriceControllers[index].text = (newQty * parts[index].partPrice).toString();
-                                  _calcInvoicePrice();
-                                },
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-                        Row(
-                          children: [
-                            Expanded(
-                              flex: 3,
-                              child: TextFormField(
-                                controller: priceControllers[index],
-                                keyboardType: TextInputType.number,
-                                textAlign: TextAlign.right,
-                                decoration: const InputDecoration(
-                                  labelText: 'Birim Fiyat',
-                                  border: OutlineInputBorder(),
-                                ),
-                                onChanged: (val) {
-                                  final newPrice = double.tryParse(val) ?? 0;
-                                  parts[index] = PartUsed(
-                                    partName: parts[index].partName,
-                                    partPrice: newPrice,
-                                    quantity: parts[index].quantity,
-                                  );
-                                  totalPriceControllers[index].text =
-                                      (parts[index].quantity * newPrice).toString();
-                                  _calcInvoicePrice();
-                                },
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-                        Align(
-                          alignment: Alignment.centerRight,
-                          child: ValueListenableBuilder<TextEditingValue>(
-                            valueListenable: totalPriceControllers[index],
-                            builder: (context, value, _) {
-                              return Text(
-                                'Toplam: ${value.text} ₺',
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 16,
-                                ),
-                              );
-                            },
-                          ),
-                        ),
-
-                      ],
-                    ),
-                  ),
-                ),
               ],
             ),
+
           );
         }).toList(),
 
@@ -591,17 +579,20 @@ class _InvoiceDailyState extends State<InvoiceDaily> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            TextField(
-              controller: _plateController,
-              decoration: InputDecoration(
-                labelText: "Plaka Numarası",
-                suffixIcon: IconButton(
-                  icon: const Icon(EvaIcons.search),
-                  onPressed: _searchByPlate,
+            if (widget.plate == null || widget.plate!.isEmpty)
+              TextField(
+                controller: _plateController,
+                onSubmitted: (_) => _searchByPlate(),
+                decoration: InputDecoration(
+                  labelText: "Plaka Numarası",
+                  suffixIcon: IconButton(
+                    icon: const Icon(EvaIcons.search),
+                    onPressed: _searchByPlate,
+                  ),
+                  border: const OutlineInputBorder(),
                 ),
-                border: const OutlineInputBorder(),
               ),
-            ),
+
             const SizedBox(height: 20),
             ElevatedButton.icon(
               onPressed: (customFont == null || logoImage == null || parts.isEmpty)
@@ -629,10 +620,8 @@ class _InvoiceDailyState extends State<InvoiceDaily> {
               CarRepairedLogCard(log: log!),
               const SizedBox(height: 24),
             ],
-
-            if (log != null && log!.taskStatus.taskStatusName != "GÖREV YOK") ...[
+            if(showInvoiceParam)
               buildPartsInputList(),
-            ],
           ],
         ),
       ),

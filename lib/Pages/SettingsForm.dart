@@ -4,6 +4,8 @@ import 'package:eva_icons_flutter/eva_icons_flutter.dart';
 import '../backend_services/backend_services.dart';
 
 import 'Components/helpers/app_helpers.dart';
+import 'Customer_Add.dart';
+import 'Customer_Editor.dart';
 
 import '../DTO/TaskStatusDTO.dart';
 import '../DTO/UserProfileDTO.dart';
@@ -11,6 +13,7 @@ import '../DTO/RolesDTO.dart';
 import '../DTO/roles.dart';
 import '../DTO/permissions.dart';
 import '../DTO/UpdateUserDTO.dart';
+import 'AddAccount.dart';
 
 class SettingsForm extends StatefulWidget {
   const SettingsForm({super.key});
@@ -20,11 +23,12 @@ class SettingsForm extends StatefulWidget {
 }
 
 class _SettingsFormState extends State<SettingsForm> {
-  String selectedSetting = 'Görev Durumu';
+  String selectedSetting = 'Kullanıcılar ekle';
   final List<String> settingOptions = [
-    'Görev Durumu',
-    'Roller',
-    'Kullanıcılar'
+    'Kullanıcılar ekle',
+    'Kullanıcılar düzenle',
+    'Müşteri bilgilerini ekle',
+    'Müşteri bilgilerini düzenle',
   ];
   final UserApi userApi = UserApi();
 
@@ -62,7 +66,7 @@ class _SettingsFormState extends State<SettingsForm> {
       fetchTaskStatuses();
     } else if (setting == 'Roller') {
       fetchRoles();
-    } else if (setting == 'Kullanıcılar') {
+    } else if (setting == 'Kullanıcılar düzenle') {
       fetchUsers();
     }
   }
@@ -234,82 +238,71 @@ class _SettingsFormState extends State<SettingsForm> {
 
   @override
   Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text("Ayarlar", style: Theme.of(context).textTheme.titleLarge),
-          const SizedBox(height: 16),
-          DropdownButtonFormField<String>(
-            value: selectedSetting,
-            items: settingOptions.map((String option) {
-              return DropdownMenuItem<String>(
-                value: option,
-                child: Text(option),
-              );
-            }).toList(),
-            onChanged: (String? newValue) {
-              if (newValue != null) {
-                _handleSettingChange(newValue);
-              }
-            },
-            decoration: const InputDecoration(
-              labelText: "Setting",
-              border: OutlineInputBorder(),
-              focusedBorder: OutlineInputBorder(
-                borderSide: BorderSide(color: Colors.blue, width: 2),
-              ),
-              contentPadding:
-              EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-            ),
-          ),
-          const SizedBox(height: 24),
-          Row(
-            children: [
-              Text('$selectedSetting List',
-                  style: Theme.of(context).textTheme.titleMedium),
-              const Spacer(),
-              if (selectedSetting != 'Kullanıcılar')
-                IconButton(
-                  icon: const Icon(EvaIcons.plusCircleOutline,
-                      color: Colors.blue, size: 28),
-                  onPressed: () {
-                    setState(() {
-                      isAddingNew = true;
-                    });
-                  },
+    return SizedBox.expand( // ⬅ این خط خیلی مهمه
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text("Ayarlar", style: Theme.of(context).textTheme.titleLarge),
+            const SizedBox(height: 16),
+            DropdownButtonFormField<String>(
+              value: selectedSetting,
+              items: settingOptions.map((String option) {
+                return DropdownMenuItem<String>(
+                  value: option,
+                  child: Text(option),
+                );
+              }).toList(),
+              onChanged: (String? newValue) {
+                if (newValue != null) {
+                  _handleSettingChange(newValue);
+                }
+              },
+              decoration: const InputDecoration(
+                labelText: "Setting",
+                border: OutlineInputBorder(),
+                focusedBorder: OutlineInputBorder(
+                  borderSide: BorderSide(color: Colors.blue, width: 2),
                 ),
-            ],
-          ),
-          if (isAddingNew)
-            Padding(
-              padding: const EdgeInsets.only(top: 12),
-              child: TextFormField(
-                controller: newEntryController,
-                decoration: InputDecoration(
-                  labelText: "Enter new $selectedSetting",
-                  border: const OutlineInputBorder(),
-                  suffixIcon: IconButton(
-                    icon: const Icon(EvaIcons.checkmarkCircle2Outline),
-                    onPressed: () {
-                      final value = newEntryController.text.trim();
-                      if (value.isNotEmpty) {
-                        sendToBackendInsert(value);
-                      }
-                    },
+                contentPadding:
+                EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              ),
+            ),
+            const SizedBox(height: 24),
+
+            if (isAddingNew)
+              Padding(
+                padding: const EdgeInsets.only(top: 12),
+                child: TextFormField(
+                  controller: newEntryController,
+                  decoration: InputDecoration(
+                    labelText: "Enter new $selectedSetting",
+                    border: const OutlineInputBorder(),
+                    suffixIcon: IconButton(
+                      icon: const Icon(EvaIcons.checkmarkCircle2Outline),
+                      onPressed: () {
+                        final value = newEntryController.text.trim();
+                        if (value.isNotEmpty) {
+                          sendToBackendInsert(value);
+                        }
+                      },
+                    ),
                   ),
                 ),
               ),
-            ),
-          const SizedBox(height: 16),
-          if (selectedSetting == 'Görev Durumu') _buildTaskStatusList(),
-          if (selectedSetting == 'Roller') _buildRoleList(),
-          if (selectedSetting == 'Kullanıcılar') _buildUsersList(),
-        ],
+            const SizedBox(height: 16),
+            if (selectedSetting == 'Kullanıcılar ekle') AddAccount(),
+            if (selectedSetting == 'Kullanıcılar düzenle') _buildUsersList(),
+            if (selectedSetting == 'Müşteri bilgilerini ekle') CustomerAdd(),
+            if (selectedSetting == 'Müşteri bilgilerini düzenle') CustomerEditor(),
+          ],
+        ),
       ),
     );
   }
+
+
 
 
   Widget _buildEditableItem({
@@ -384,6 +377,7 @@ class _SettingsFormState extends State<SettingsForm> {
   Widget _buildTaskStatusList() {
     return ListView.builder(
       shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
       itemCount: taskStatusList.length,
       itemBuilder: (context, index) {
         final item = taskStatusList[index];
@@ -401,6 +395,7 @@ class _SettingsFormState extends State<SettingsForm> {
   Widget _buildRoleList() {
     return ListView.builder(
       shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
       itemCount: rolesList.length,
       itemBuilder: (context, index) {
         final item = rolesList[index];
@@ -418,6 +413,7 @@ class _SettingsFormState extends State<SettingsForm> {
   Widget _buildUsersList() {
     return ListView.builder(
       shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
       itemCount: usersList.length,
       itemBuilder: (context, index) {
         final user = usersList[index];

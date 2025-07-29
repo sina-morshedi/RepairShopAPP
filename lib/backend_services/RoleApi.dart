@@ -6,11 +6,13 @@ class RoleApi {
     final String url = ApiEndpoints.getAllRoles;
 
     try {
-      final response = await http.get(Uri.parse(url));
+      final response = await http.get(
+        Uri.parse(url),
+        headers: BackendUtils.buildHeader(),
+      );
 
       if (response.statusCode == 200) {
         final List<dynamic> dataList = jsonDecode(response.body);
-
         final List<RolesDTO> roles =
         dataList.map((e) => RolesDTO.fromJson(e)).toList();
 
@@ -39,9 +41,10 @@ class RoleApi {
     try {
       final response = await http.post(
         Uri.parse(url),
-        headers: {"Content-Type": "application/json"},
+        headers: BackendUtils.buildHeader(),
         body: jsonEncode(role.toJson()),
       );
+
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         return ApiResponse(
@@ -72,10 +75,11 @@ class RoleApi {
     }
 
     final String url = "${ApiEndpoints.updateRole}/${role.id}";
+
     try {
       final response = await http.put(
         Uri.parse(url),
-        headers: {"Content-Type": "application/json"},
+        headers: BackendUtils.buildHeader(),
         body: jsonEncode(role.toJson()),
       );
 
@@ -104,7 +108,10 @@ class RoleApi {
     final String url = "${ApiEndpoints.deleteRole}/$id";
 
     try {
-      final response = await http.delete(Uri.parse(url));
+      final response = await http.delete(
+        Uri.parse(url),
+        headers: BackendUtils.buildHeader(),
+      );
 
       if (response.statusCode == 200) {
         return ApiResponse(

@@ -6,7 +6,10 @@ class TaskStatusApi {
     final String url = ApiEndpoints.getAllTaskStatus;
 
     try {
-      final response = await http.get(Uri.parse(url));
+      final response = await http.get(
+        Uri.parse(url),
+        headers: BackendUtils.buildHeader(),
+      );
 
       if (response.statusCode == 200) {
         final List<dynamic> dataList = jsonDecode(response.body);
@@ -37,7 +40,7 @@ class TaskStatusApi {
     try {
       final response = await http.post(
         uri,
-        headers: {"Content-Type": "application/json"},
+        headers: BackendUtils.buildHeader(),
         body: jsonEncode({'taskName': taskStatusName}),
       );
 
@@ -68,7 +71,7 @@ class TaskStatusApi {
     try {
       final response = await http.post(
         Uri.parse(url),
-        headers: {"Content-Type": "application/json"},
+        headers: BackendUtils.buildHeader(),
         body: jsonEncode(status.toJson()),
       );
       if (response.statusCode == 200) {
@@ -101,12 +104,11 @@ class TaskStatusApi {
     }
 
     final String url = "${ApiEndpoints.updateTaskStatus}/${status.id}";
-    print(url);
-    print(status.toJson());
+
     try {
       final response = await http.put(
         Uri.parse(url),
-        headers: {"Content-Type": "application/json"},
+        headers: BackendUtils.buildHeader(),
         body: jsonEncode(status.toJson()),
       );
 
@@ -129,11 +131,15 @@ class TaskStatusApi {
       );
     }
   }
+
   Future<ApiResponse<void>> deleteStatus(String id) async {
-    final String url = "${ApiEndpoints.deleteTaskStatus}/$id"; // یا آدرس صحیح
+    final String url = "${ApiEndpoints.deleteTaskStatus}/$id";
 
     try {
-      final response = await http.delete(Uri.parse(url));
+      final response = await http.delete(
+        Uri.parse(url),
+        headers: BackendUtils.buildHeader(),
+      );
 
       if (response.statusCode == 200) {
         return ApiResponse(

@@ -25,7 +25,10 @@ import 'Components/DecimalTextInputFormatter.dart';
 
 
 class GetCarProblem extends StatefulWidget {
-  const GetCarProblem({super.key});
+  final String? plate;
+  final VoidCallback? onProblemSaved;  // این خط جدید
+
+  const GetCarProblem({super.key, this.plate, this.onProblemSaved});
 
   @override
   _GetCarProblemState createState() => _GetCarProblemState();
@@ -33,7 +36,8 @@ class GetCarProblem extends StatefulWidget {
 
 class _GetCarProblemState extends State<GetCarProblem>
     with SingleTickerProviderStateMixin {
-  final plateController = TextEditingController();
+  final TextEditingController _licensePlateController = TextEditingController();
+  final TextEditingController _problemController = TextEditingController();
   Map<String, dynamic>? carData;
   CarRepairLogResponseDTO? carLog;
   String? car_id;
@@ -55,16 +59,10 @@ class _GetCarProblemState extends State<GetCarProblem>
   bool showInvoice = false;
   bool isUserButtonEnabled = true;
 
-
-  TextEditingController _controllerProblemText = TextEditingController();
   UserProfileDTO? user;
   List<UserProfileDTO>? usersLogs;
   String? selectedUserId;
 
-  List<TextEditingController> _priceControllers = [];
-  List<TextEditingController> _quantityControllers = [];
-  List<TextEditingController> _partNameControllers = [];
-  final TextEditingController _newPaymentController = TextEditingController();
 
   double totalPrice = 0;
 
@@ -73,17 +71,17 @@ class _GetCarProblemState extends State<GetCarProblem>
   late Animation<double> _fadeAnimation;
 
   @override
-  void initState(){
+  void initState() {
     super.initState();
     needUpdate = false;
+
     _controller = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 700),
-
     );
 
     _slideAnimation = Tween<Offset>(
-      begin: const Offset(0, 0.2), // from bottom
+      begin: const Offset(0, 0.2),
       end: Offset.zero,
     ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOut));
 
@@ -92,10 +90,18 @@ class _GetCarProblemState extends State<GetCarProblem>
       end: 1,
     ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOut));
 
-    _controller.forward(); // start animation on page open
+    _controller.forward();
     speech = stt.SpeechToText();
     loadAssets();
+
+    if (widget.plate != null && widget.plate!.isNotEmpty) {
+      _licensePlateController.text = widget.plate!.toUpperCase();
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        searchPlate();
+      });
+    }
   }
+
 
 
   Future<void> loadAssets() async {
@@ -115,26 +121,14 @@ class _GetCarProblemState extends State<GetCarProblem>
     _shouldContinueListening = false;
     speech.stop();
     _controller.dispose();
-    plateController.dispose();
-    _controllerProblemText.dispose();
+    _licensePlateController.dispose();
+    _problemController.dispose();
     super.dispose();
   }
 
   void _clearPartControllers() {
-    for (final controller in _partNameControllers) {
-      controller.dispose();
-    }
-    for (final controller in _priceControllers) {
-      controller.dispose();
-    }
-    for (final controller in _quantityControllers) {
-      controller.dispose();
-    }
-
-    _partNameControllers.clear();
-    _priceControllers.clear();
-    _quantityControllers.clear();
-    _newPaymentController.clear();
+    _licensePlateController.clear();
+    _problemController.clear();
   }
 
   void _startListening() {
@@ -142,11 +136,11 @@ class _GetCarProblemState extends State<GetCarProblem>
     speech.listen(
       onResult: (val) => setState(() {
         if (val.finalResult) {
-          final oldText = _controllerProblemText.text;
+          final oldText = _problemController.text;
           final newText = '$oldText ${val.recognizedWords}';
-          _controllerProblemText.text = newText.trim();
-          _controllerProblemText.selection = TextSelection.fromPosition(
-            TextPosition(offset: _controllerProblemText.text.length),
+          _problemController.text = newText.trim();
+          _problemController.selection = TextSelection.fromPosition(
+            TextPosition(offset: _problemController.text.length),
           );
         }
       }),
@@ -202,10 +196,13 @@ class _GetCarProblemState extends State<GetCarProblem>
     needUpdate = false;
     isUserButtonEnabled = true;
 
-    final response = await backend_services().getCarInfoByLicensePlate(plateController.text.toUpperCase());
+    final plate = _licensePlateController.text.trim().toUpperCase();
+    if (plate.isEmpty) return;
+
+    final response = await CarInfoApi().getCarInfoByLicensePlate(_licensePlateController.text.toUpperCase());
 
     if(response.status == 'success'){
-      final response = await CarRepairLogApi().getLatestLogByLicensePlate(plateController.text.toUpperCase());
+      final response = await CarRepairLogApi().getLatestLogByLicensePlate(_licensePlateController.text.toUpperCase());
 
       if(response.status == 'success') {
         setState(() {
@@ -216,7 +213,7 @@ class _GetCarProblemState extends State<GetCarProblem>
             isEnabled = true;
           }else if(carLog!.taskStatus.taskStatusName == 'SORUN GİDERME') {
             setState(() {
-              _controllerProblemText.text = carLog!.problemReport!.problemSummary!;
+              _problemController.text = carLog!.problemReport!.problemSummary!;
             });
             isEnabled = true;
             needUpdate= true;
@@ -255,7 +252,7 @@ class _GetCarProblemState extends State<GetCarProblem>
       return;
     }
 
-    final carResponse = await backend_services().getCarInfoByLicensePlate(plateController.text.toUpperCase());
+    final carResponse = await CarInfoApi().getCarInfoByLicensePlate(_licensePlateController.text.toUpperCase());
     if(carResponse.status == 'success') {
       final selectedCar = carResponse.data;
       if (selectedCar != null) {
@@ -285,57 +282,65 @@ class _GetCarProblemState extends State<GetCarProblem>
   void saveProblem() async {
     if (carInfo == null) return;
 
-    final problemText = _controllerProblemText.text.trim();
+    final problemText = _problemController.text.trim();
     if (problemText.isEmpty) {
-      StringHelper.showErrorDialog(context, "Lütfen problemi giriniz");
+
+      await StringHelper.showErrorDialog(context, "Lütfen problemi giriniz");
       return;
     }
 
     final user = await UserPrefs.getUserWithID();
-    if(user == null){
-      StringHelper.showErrorDialog(context, 'kullanıcı bilgiye bulamadım.');
+
+    if (user == null) {
+      await StringHelper.showErrorDialog(context, 'kullanıcı bilgiye bulamadım.');
       return;
     }
 
-    // Create problem report DTO
-    if(needUpdate){
+    if (needUpdate) {
       final reportDTO = CarProblemReportRequestDTO(
         id: carLog!.problemReport!.id,
         carId: carLog!.carInfo.id,
-        creatorUserId: user!.userId,
+        creatorUserId: user.userId,
         problemSummary: problemText,
         dateTime: DateTime.now(),
       );
+
       final updateResponse = await CarProblemReportApi().updateReport(reportDTO);
-      if(updateResponse.status == 'success')
-        StringHelper.showInfoDialog(context, updateResponse.message!);
-      else
-        StringHelper.showErrorDialog(context, updateResponse.message!);
-    }
-    else{
+
+
+      if (updateResponse.status == 'success') {
+        await StringHelper.showInfoDialog(context, updateResponse.message!);
+        widget.onProblemSaved?.call();
+      } else {
+        await StringHelper.showErrorDialog(context, updateResponse.message!);
+      }
+
+    } else {
       final reportDTO = CarProblemReportRequestDTO(
         carId: carLog!.carInfo.id,
-        creatorUserId: user!.userId,
+        creatorUserId: user.userId,
         problemSummary: problemText,
         dateTime: DateTime.now(),
       );
 
-      // Save problem report
       final saveResponse = await CarProblemReportApi().createReport(reportDTO);
 
+
       if (saveResponse.status == 'success' && saveResponse.data != null) {
-        _controllerProblemText.clear();
-
-        // Now create a CarRepairLog based on saved problem report
         final createdProblemReport = saveResponse.data!;
+        widget.onProblemSaved?.call();
+        _problemController.clear();
 
-        final taskStatus  = await TaskStatusApi().getTaskStatusByName('SORUN GİDERME');
-        if(taskStatus.status != 'success') {
-          StringHelper.showErrorDialog(
+        final taskStatus = await TaskStatusApi().getTaskStatusByName('SORUN GİDERME');
+
+
+        if (taskStatus.status != 'success') {
+          await StringHelper.showErrorDialog(
               context, 'Task Status Respone: ${taskStatus.message!}');
           return;
         }
-        if (taskStatus.status == 'success' && taskStatus.data != null) {
+
+        if (taskStatus.data != null) {
           final customerId = carLog?.customer?.id ?? "";
           final logRequest = CarRepairLogRequestDTO(
             carId: createdProblemReport.carId,
@@ -344,33 +349,31 @@ class _GetCarProblemState extends State<GetCarProblem>
             taskStatusId: taskStatus.data!.id!,
             dateTime: DateTime.now(),
             problemReportId: createdProblemReport.id,
-            customerId: customerId
+            customerId: customerId,
           );
 
           final logResponse = await CarRepairLogApi().createLog(logRequest);
 
+
           if (logResponse.status == 'success') {
-            StringHelper.showInfoDialog(
-                context,"CarRepairLog başarıyla oluşturuldu.");
+            if (!mounted) return;
+            await StringHelper.showInfoDialog(context, "CarRepairLog başarıyla oluşturuldu.");
           } else {
-            StringHelper.showErrorDialog(
-                context,"CarRepairLog oluşturulamadı: ${logResponse.message}");
+            await StringHelper.showErrorDialog(
+                context, "CarRepairLog oluşturulamadı: ${logResponse.message}");
           }
         } else {
-          StringHelper.showErrorDialog(
-              context,"TaskStatus not found or error: ${taskStatus.message}");
+          await StringHelper.showErrorDialog(
+              context, "TaskStatus not found or error: ${taskStatus.message}");
         }
 
-
       } else {
-        // Show error if saving problem report failed
-        StringHelper.showErrorDialog(
+        await StringHelper.showErrorDialog(
             context,
             "Problem raporu kaydedilirken hata oluştu: ${saveResponse.message}"
         );
       }
     }
-
   }
 
   void _resetPage() {
@@ -379,8 +382,8 @@ class _GetCarProblemState extends State<GetCarProblem>
       _isListening = false;
       _shouldContinueListening = false;
       speech.stop();
-      plateController.clear();
-      _controllerProblemText.clear();
+      _licensePlateController.clear();
+      _problemController.clear();
       carData = null;
       _activeField = 0;
       isEnabled = false;
@@ -411,7 +414,7 @@ class _GetCarProblemState extends State<GetCarProblem>
             children: [
               Expanded(
                 child: TextField(
-                  controller: _controllerProblemText,
+                  controller: _problemController,
                   maxLines: 3,
                   decoration: const InputDecoration(
                     labelText: "Araç problemi",
@@ -450,7 +453,7 @@ class _GetCarProblemState extends State<GetCarProblem>
 
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("Plaka ile Ara")),
+      //appBar: AppBar(title: const Text("Plaka ile Ara")),
       body: SafeArea(
         child: GestureDetector(
           onTap: () => FocusScope.of(context).unfocus(),
@@ -463,20 +466,22 @@ class _GetCarProblemState extends State<GetCarProblem>
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    TextField(
-                      controller: plateController,
-                      decoration: const InputDecoration(
-                        labelText: "Plaka girin",
-                        border: OutlineInputBorder(),
+                    if (widget.plate == null || widget.plate!.isEmpty) ...[
+                      TextField(
+                        controller: _licensePlateController,
+                        decoration: const InputDecoration(
+                          labelText: "Plaka girin",
+                          border: OutlineInputBorder(),
+                        ),
+                        textCapitalization: TextCapitalization.characters,
                       ),
-                      textCapitalization: TextCapitalization.characters,
-                    ),
-                    const SizedBox(height: 10),
-                    ElevatedButton(
-                      onPressed: searchPlate,
-                      child: const Text("Ara"),
-                    ),
-                    const SizedBox(height: 20),
+                      const SizedBox(height: 10),
+                      ElevatedButton(
+                        onPressed: searchPlate,
+                        child: const Text("Ara"),
+                      ),
+                      const SizedBox(height: 20),
+                    ],
                     if (isResultEnabled) ...[
                       buildResultSection(),
                     ],
@@ -489,5 +494,6 @@ class _GetCarProblemState extends State<GetCarProblem>
       ),
     );
   }
+
 
 }

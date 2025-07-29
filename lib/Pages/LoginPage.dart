@@ -6,12 +6,14 @@ import '../DataFiles.dart';
 import 'user_prefs.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:http/http.dart' as http;
+import 'package:jwt_decoder/jwt_decoder.dart';
+
 
 import '../DTO/UserProfileDTO.dart';
 import '../backend_services/ApiEndpoints.dart';
 
 import 'package:autonetwork/utils/string_helper.dart';
-import '../utils/utility.dart';
+import 'package:get_storage/get_storage.dart';
 import 'MainMenuPage.dart';
 
 
@@ -25,17 +27,11 @@ class LoginPage extends StatefulWidget {
 class _LoginPageState extends State<LoginPage> {
   final _usernameController = TextEditingController();
   final _passwordController = TextEditingController();
-  final TextEditingController _ipController = TextEditingController();
-  final TextEditingController _portController = TextEditingController();
-  bool _isScanServerButtonEnabled = false;
+  final _storeNameController = TextEditingController();
+
   bool _isLoginButtonEnabled = true;
   String _appVersion = '';
-  String ip = '';
-  int port = 8000;
   bool isChecked = false;
-
-  String? username;
-  String? password;
 
   @override
   void initState() {
@@ -44,6 +40,15 @@ class _LoginPageState extends State<LoginPage> {
     // deleteJsonFile();
     _checkStatus();
     _loadAppVersion();
+  }
+
+  @override
+  void dispose() {
+    // برای جلوگیری از نشت حافظه، کنترلرها را dispose کنید
+    _usernameController.dispose();
+    _passwordController.dispose();
+    _storeNameController.dispose();
+    super.dispose();
   }
 
   void _loadAppVersion() async {
@@ -57,15 +62,18 @@ class _LoginPageState extends State<LoginPage> {
     final storage = FlutterSecureStorage();
     final user = await storage.read(key: 'username') ?? '';
     final pass = await storage.read(key: 'password') ?? '';
+    final storeName = await storage.read(key: 'storeName') ?? '';
     if (user != '') {
       _usernameController.text = user;
       _passwordController.text = pass;
+      _storeNameController.text = storeName;
       setState(() {
         isChecked = true;
       });
     } else {
       _usernameController.text = user;
       _passwordController.text = pass;
+      _storeNameController.text = storeName;
       setState(() {
         isChecked = false;
       });
@@ -73,10 +81,12 @@ class _LoginPageState extends State<LoginPage> {
 
   }
   void _loginToWebServer() async{
-    username = _usernameController.text;
-    password = _passwordController.text;
+    String username = _usernameController.text;
+    String password = _passwordController.text;
+    String storeName = _storeNameController.text;
     final String backendUrl =
-        '${ApiEndpoints.login}?username=$username&password=$password';
+        '${ApiEndpoints.login}?username=${Uri.encodeComponent(username)}&password=${Uri.encodeComponent(password)}&storeName=${Uri.encodeComponent(storeName)}';
+
 
     try {
       final response = await http.get(Uri.parse(backendUrl));
@@ -84,19 +94,33 @@ class _LoginPageState extends State<LoginPage> {
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        final userProfile = UserProfileDTO.fromJson(data);
+        final token = data['token'];
 
+        Map<String, dynamic> payload = JwtDecoder.decode(token);
+        bool inventoryEnabled = payload['inventoryEnabled'] ?? false;
+        bool customerEnabled = payload['customerEnabled'] ?? false;
+
+        final box = GetStorage();
+        box.write('token', token);
+
+
+        final userProfile = UserProfileDTO.fromJson(data['profile']);
         await UserPrefs.clearUserWithID();
+        await UserPrefs.saveInventoryEnabled(inventoryEnabled);
+        await UserPrefs.saveCustomerEnabled(customerEnabled);
+        await UserPrefs.saveStoreName(storeName);
         await UserPrefs.saveUserWithID(userProfile);
         await UserPrefs.saveLoginTimestamp();
         if (isChecked) {
           final storage = FlutterSecureStorage();
           await storage.write(key: 'username', value: username);
           await storage.write(key: 'password', value: password);
+          await storage.write(key: 'storeName', value: storeName);
         } else {
           final storage = FlutterSecureStorage();
           await storage.delete(key: 'username');
           await storage.delete(key: 'password');
+          await storage.delete(key: 'storeName');
         }
         if (!mounted) return;
 
@@ -112,74 +136,6 @@ class _LoginPageState extends State<LoginPage> {
     }
 
 
-  }
-
-
-
-  Future<void> _showIPPortDialog() async {
-    await _checkStatus();
-    _ipController.text = ip;
-    _portController.text = port.toString();
-
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text("Enter IP and Port"),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: _ipController,
-                decoration: const InputDecoration(labelText: "IP Address"),
-                keyboardType: TextInputType.number,
-              ),
-              const SizedBox(height: 10),
-              TextField(
-                controller: _portController,
-                decoration: const InputDecoration(labelText: "Port"),
-                keyboardType: TextInputType.number,
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              child: const Text("Cancel"),
-              onPressed: () => Navigator.pop(context),
-            ),
-            ElevatedButton(
-              child: const Text("Confirm"),
-              onPressed: () async {
-                String ip = _ipController.text.trim();
-                int port = int.parse(_portController.text.trim());
-
-                if (isValidIPAddress(ip)) {
-                  setState(() {
-                    _isLoginButtonEnabled = true;
-                  });
-
-                  Map<String, dynamic> data = {
-                    'serverIP': ip,
-                    'serverPort': port,
-                  };
-                  await writeJsonToFile(data, fileType.serverConfig);
-
-                  Navigator.pop(context);
-
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text("IP: $ip - Port: $port")),
-                  );
-                } else {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text("Please enter Valid IP")),
-                  );
-                }
-              },
-            ),
-          ],
-        );
-      },
-    );
   }
 
 
@@ -239,6 +195,17 @@ class _LoginPageState extends State<LoginPage> {
                 prefixIcon: Icon(Icons.lock),
               ),
             ),
+            SizedBox(height: 16),
+
+            TextField(
+              controller: _storeNameController,
+              decoration: InputDecoration(
+                labelText: 'TamirgahName',
+                border: OutlineInputBorder(),
+                prefixIcon: Icon(Icons.store),
+              ),
+            ),
+
             SizedBox(height: 16),
 
             Row(

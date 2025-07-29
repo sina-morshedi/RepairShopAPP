@@ -12,7 +12,10 @@ import 'Components/helpers/app_helpers.dart';
 import 'CustomerInfoCard.dart';
 
 class CarEntry extends StatefulWidget {
-  const CarEntry({super.key});
+  final String? initialPlate;
+  final VoidCallback? onEntrySuccess;
+
+  const CarEntry({super.key, this.initialPlate, this.onEntrySuccess});
 
   @override
   State<CarEntry> createState() => _CarEntryState();
@@ -32,6 +35,8 @@ class _CarEntryState extends State<CarEntry> {
   bool isLoading = false;
   bool foundLog = false;
 
+  bool isSaving = false;
+
   final Map<String, String> statusSvgMap = {
     'GÖREV YOK': 'assets/images/vector/stop.svg',
     'GİRMEK': 'assets/images/vector/entered-garage.svg',
@@ -41,6 +46,16 @@ class _CarEntryState extends State<CarEntry> {
     'İŞ BİTTİ': 'assets/images/vector/finish-flag.svg',
     'FATURA': 'assets/images/vector/bill.svg',
   };
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.initialPlate != null && widget.initialPlate!.isNotEmpty) {
+      _plateController.text = widget.initialPlate!.toUpperCase();
+      _searchPlate();
+    }
+  }
+
 
   Future<void> _searchPlate() async {
     final plate = _plateController.text.trim().toUpperCase();
@@ -52,7 +67,7 @@ class _CarEntryState extends State<CarEntry> {
       latestLog = null;
     });
 
-    final carResponse = await backend_services().getCarInfoByLicensePlate(plate);
+    final carResponse = await CarInfoApi().getCarInfoByLicensePlate(plate);
 
     setState(() => isLoading = false);
 
@@ -60,7 +75,7 @@ class _CarEntryState extends State<CarEntry> {
       selectedCar = carResponse.data;
     } else {
       StringHelper.showErrorDialog(
-          context, 'Car Response: ${carResponse.message!}');
+          context, carResponse.message!);
       return;
     }
 
@@ -80,7 +95,7 @@ class _CarEntryState extends State<CarEntry> {
     } else {
       foundLog = false;
       StringHelper.showErrorDialog(
-          context, 'Log Response: ${logResponse.message!}');
+          context, logResponse.message!);
     }
 
     final taskStatus = await TaskStatusApi().getTaskStatusByName('GİRMEK');
@@ -89,7 +104,7 @@ class _CarEntryState extends State<CarEntry> {
         taskStatusLog = taskStatus.data;
       });
     } else {
-      StringHelper.showErrorDialog(context, 'Task Status Response: ${taskStatus.message!}');
+      StringHelper.showErrorDialog(context, taskStatus.message!);
     }
   }
 
@@ -110,13 +125,17 @@ class _CarEntryState extends State<CarEntry> {
 
   Future<void> _submitEntry() async {
     final user = await UserPrefs.getUserWithID();
-    final userId = user!.userId;
+    final userId = user!.userId ?? "";
 
     if (selectedCustomer == null) {
       StringHelper.showErrorDialog(context, "Lütfen bir müşteri seçiniz.");
       return;
     }
     if (selectedCar != null) {
+      setState(() {
+        isSaving = true;
+      });
+
       final logRequest = CarRepairLogRequestDTO(
         carId: selectedCar!.id,
         creatorUserId: userId,
@@ -127,105 +146,133 @@ class _CarEntryState extends State<CarEntry> {
         customerId: selectedCustomer!.id,
       );
 
-
-      print(logRequest);
       final response = await CarRepairLogApi().createLog(logRequest);
 
-      if (response.status == 'success' && response.data != null)
+      setState(() {
+        isSaving = false;
+      });
+
+      if (response.status == 'success' && response.data != null) {
+        foundLog = true;
+        setState(() {
+          latestLog = response.data;
+        });
+
         StringHelper.showInfoDialog(context, 'Araba girişi kaydedildi');
-      else
-        StringHelper.showErrorDialog(context, 'Create Log: ${response.message!}');
+        widget.onEntrySuccess?.call();
+      } else
+        StringHelper.showErrorDialog(context, response.message!);
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          TextField(
-            controller: _plateController,
-            decoration: InputDecoration(
-              labelText: 'Plaka giriniz',
-              suffixIcon: IconButton(
-                icon: const Icon(EvaIcons.search),
-                onPressed: _searchPlate,
-              ),
-              border: const OutlineInputBorder(),
-            ),
-          ),
-          const SizedBox(height: 16),
-
-          // کارت ماشین با آیکون ماشین و تم روشن
-          if (selectedCar != null)
-            CarInfoCard(car: selectedCar!),
-
-          const SizedBox(height: 24),
-
-          // اگر latestLog نال باشد، فیلدها نمایش داده می‌شود
-          if (latestLog == null) ...[
-            if (selectedCar != null) ...[
-              TextField(
-                controller: _customerNameController,
-                decoration: InputDecoration(
-                  labelText: 'Müşteri adı',
-                  suffixIcon: IconButton(
-                    icon: const Icon(EvaIcons.search),
-                    onPressed: _searchCustomer,
+    return Stack(
+      children: [
+        SingleChildScrollView(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (widget.initialPlate == null) ...[
+                TextField(
+                  controller: _plateController,
+                  onSubmitted: (_) => _searchPlate(),
+                  decoration: InputDecoration(
+                    labelText: 'Plaka giriniz',
+                    suffixIcon: IconButton(
+                      icon: const Icon(EvaIcons.search),
+                      onPressed: _searchPlate,
+                    ),
+                    border: const OutlineInputBorder(),
                   ),
-                  border: const OutlineInputBorder(),
                 ),
-              ),
-            ],
+                const SizedBox(height: 16),
+              ],
 
-            const SizedBox(height: 16),
+              const SizedBox(height: 16),
 
-            if (customerData != null && customerData!.isNotEmpty)
-              CustomerListCard(
-                customers: customerData!,
-                selectedCustomer: selectedCustomer,
-                onSelected: (c) => setState(() => selectedCustomer = c),
-              ),
+              if (selectedCar != null) CarInfoCard(car: selectedCar!),
 
-            const SizedBox(height: 24),
+              const SizedBox(height: 24),
 
-            if (selectedCar != null)
-              Center(
-                child: ElevatedButton.icon(
-                  onPressed: () {
-                    if (selectedCustomer == null) {
-                      StringHelper.showErrorDialog(context, 'Lütfen bir müşteri seçiniz.');
-                      return;
-                    }
-
-                    if (!foundLog || latestLog!.taskStatus.taskStatusName == 'GÖREV YOK') {
-                      _submitEntry();
-                    } else {
-                      StringHelper.showErrorDialog(context, 'Araba şu anda tamir aşamasında.');
-                    }
-                  },
-                  icon: const Icon(EvaIcons.logIn),
-                  label: const Text('Araç girişi'),
-                  style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
+              if (latestLog == null || latestLog!.taskStatus.taskStatusName == "GÖREV YOK") ...[
+                if (selectedCar != null) ...[
+                  TextField(
+                    controller: _customerNameController,
+                    onSubmitted: (_) => _searchCustomer(),
+                    decoration: InputDecoration(
+                      labelText: 'Müşteri adı',
+                      suffixIcon: IconButton(
+                        icon: const Icon(EvaIcons.search),
+                        onPressed: _searchCustomer,
+                      ),
+                      border: const OutlineInputBorder(),
                     ),
                   ),
+                ],
+
+                const SizedBox(height: 16),
+
+                if (customerData != null && customerData!.isNotEmpty)
+                  CustomerListCard(
+                    customers: customerData!,
+                    selectedCustomer: selectedCustomer,
+                    onSelected: (c) => setState(() => selectedCustomer = c),
+                  ),
+
+                const SizedBox(height: 24),
+
+                if (selectedCar != null)
+                  Center(
+                    child: ElevatedButton.icon(
+                      onPressed: () {
+                        if (selectedCustomer == null) {
+                          StringHelper.showErrorDialog(context, 'Lütfen bir müşteri seçiniz.');
+                          return;
+                        }
+
+                        if (!foundLog || latestLog!.taskStatus.taskStatusName == 'GÖREV YOK') {
+                          _submitEntry();
+                        } else {
+                          StringHelper.showErrorDialog(context, 'Araba şu anda tamir aşamasında.');
+                        }
+                      },
+                      icon: const Icon(EvaIcons.logIn),
+                      label: const Text('Araç girişi'),
+                      style: ElevatedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                    ),
+                  ),
+              ] else ...[
+                const SizedBox(height: 16),
+                SvgPicture.asset(
+                  statusSvgMap[latestLog!.taskStatus.taskStatusName] ?? 'assets/images/vector/stop.svg',
+                  width: 48,
+                  height: 48,
                 ),
-              ),
-          ] else ...[
-            // زمانی که latestLog مقدار دارد، در اینجا فقط باید اطلاعات وضعیت یا گزارش را نمایش دهید
-            // در اینجا می‌توانید کارهایی مانند نمایش آیکون وضعیت را انجام دهید.
-            const SizedBox(height: 16),
-            SvgPicture.asset(statusSvgMap[latestLog!.taskStatus.taskStatusName] ?? 'assets/images/vector/stop.svg'),
-            const SizedBox(height: 16),
-            Text('Görev Durumu: ${latestLog!.taskStatus.taskStatusName}'),
-          ]
+                const SizedBox(height: 16),
+                Text('Görev Durumu: ${latestLog!.taskStatus.taskStatusName}'),
+              ],
+            ],
+          ),
+        ),
+
+        // لودینگ ذخیره
+        if (isSaving) ...[
+          Positioned.fill(
+            child: ModalBarrier(
+              dismissible: false,
+              color: Colors.black.withOpacity(0.3),
+            ),
+          ),
+          const Center(child: CircularProgressIndicator()),
         ],
-      ),
+      ],
     );
   }
 }

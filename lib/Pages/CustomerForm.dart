@@ -1,15 +1,15 @@
 import 'package:flutter/material.dart';
-import 'Invoice_Daily.dart';
-import 'Invoice_Filter.dart';
+import 'Customer_Add.dart';
+import 'Customer_Editor.dart';
 
-class InvoiceForm extends StatefulWidget {
-  const InvoiceForm({super.key});
+class CustomerForm extends StatefulWidget {
+  const CustomerForm({super.key});
 
   @override
-  _InvoiceFormState createState() => _InvoiceFormState();
+  _CustomerFormState createState() => _CustomerFormState();
 }
 
-class _InvoiceFormState extends State<InvoiceForm> {
+class _CustomerFormState extends State<CustomerForm> {
   @override
   Widget build(BuildContext context) {
     return Padding(
@@ -21,16 +21,17 @@ class _InvoiceFormState extends State<InvoiceForm> {
             const TabBar(
               labelColor: Colors.blue,
               tabs: [
-                Tab(text: "Fatura Oluştur"),
-                Tab(text: "Fatura Ara"),
+                Tab(text: "Müşteri bilgilerini ekle"),
+                Tab(text: "Müşteri bilgilerini düzenle"),
               ],
             ),
             const SizedBox(height: 8),
+            // اینجا Expanded گذاشتیم به جای SizedBox ثابت
             Expanded(
-              child: TabBarView(
+              child: const TabBarView(
                 children: [
-                  InvoiceDaily(),
-                  InvoiceFilter(),
+                  CustomerAdd(),
+                  CustomerEditor(),
                 ],
               ),
             ),
@@ -40,3 +41,4 @@ class _InvoiceFormState extends State<InvoiceForm> {
     );
   }
 }
+

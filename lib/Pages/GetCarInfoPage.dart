@@ -67,7 +67,7 @@ class _GetCarInfoPageState extends State<GetCarInfoPage>
   }
 
   Future<void> searchByPlate() async {
-    final response = await backend_services()
+    final response = await CarInfoApi()
         .getCarInfoByLicensePlate(searchController.text.trim().toUpperCase());
 
     if (response.status == 'success' && response.data != null) {
@@ -107,12 +107,12 @@ class _GetCarInfoPageState extends State<GetCarInfoPage>
     ApiResponse response;
 
     if (isEditEnabled) {
-      response = await backend_services().updateCarInfoByLicensePlate(
+      response = await CarInfoApi().updateCarInfoByLicensePlate(
         licensePlateNoController.text.trim().toUpperCase(),
         carInfo,
       );
     } else {
-      response = await backend_services().insertCarInfo(carInfo);
+      response = await CarInfoApi().insertCarInfo(carInfo);
     }
 
     if (response.status != 'error') {

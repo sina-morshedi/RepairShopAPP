@@ -137,8 +137,8 @@ class DepartmentWithID {
 
   factory DepartmentWithID.fromJson(Map<String, dynamic> json) {
     return DepartmentWithID(
-        id: json['id'],
-        name: json['name'],
+      id: json['id'],
+      name: json['name'],
     );
   }
 
@@ -407,17 +407,17 @@ class UserDepartment {
   final Department? department;
 
   UserDepartment({required this.id,
-                  required this.user_id,
-                  required this.department_id,
-                  this.user,
-                  this.department});
+    required this.user_id,
+    required this.department_id,
+    this.user,
+    this.department});
 
   factory UserDepartment.fromJson(Map<String, dynamic> json) =>  UserDepartment(
-    id: json['id'],
-    user_id: json['user_id'],
-    department_id: json['department_id'],
-    user: json['User'] != null ? User.fromJson(json['User']) : null,
-    department: json['Department'] != null ? Department.fromJson(json['Department']) : null
+      id: json['id'],
+      user_id: json['user_id'],
+      department_id: json['department_id'],
+      user: json['User'] != null ? User.fromJson(json['User']) : null,
+      department: json['Department'] != null ? Department.fromJson(json['Department']) : null
   );
 
   Map<String, dynamic> toJson() => {
@@ -635,4 +635,3 @@ class objApiSuccess {
     };
   }
 }
-

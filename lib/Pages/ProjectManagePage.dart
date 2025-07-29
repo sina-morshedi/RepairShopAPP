@@ -1,15 +1,15 @@
 import 'package:flutter/material.dart';
-import 'Invoice_Daily.dart';
-import 'Invoice_Filter.dart';
+import 'ProjectManageForm.dart';
+import 'RepairmenLogListTab.dart';
 
-class InvoiceForm extends StatefulWidget {
-  const InvoiceForm({super.key});
+class ProjectManagePage extends StatefulWidget {
+  const ProjectManagePage({super.key});
 
   @override
-  _InvoiceFormState createState() => _InvoiceFormState();
+  _ProjectManagePageState createState() => _ProjectManagePageState();
 }
 
-class _InvoiceFormState extends State<InvoiceForm> {
+class _ProjectManagePageState extends State<ProjectManagePage> {
   @override
   Widget build(BuildContext context) {
     return Padding(
@@ -21,16 +21,16 @@ class _InvoiceFormState extends State<InvoiceForm> {
             const TabBar(
               labelColor: Colors.blue,
               tabs: [
-                Tab(text: "Fatura Oluştur"),
-                Tab(text: "Fatura Ara"),
+                Tab(text: "Tüm Onarımlar"),
+                Tab(text: "Usta Seç"),
               ],
             ),
             const SizedBox(height: 8),
             Expanded(
               child: TabBarView(
                 children: [
-                  InvoiceDaily(),
-                  InvoiceFilter(),
+                  SingleChildScrollView(child: RepairmenLogListTab()),
+                  ProjectmanageForm(),
                 ],
               ),
             ),

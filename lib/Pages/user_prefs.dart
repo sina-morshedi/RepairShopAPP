@@ -6,8 +6,49 @@ import '../DTO/UserProfileDTO.dart';
 class UserPrefs {
   static const String _generalConfig = 'general_Config';
   static const String _userKey = 'user';
+  static const String _storeNameKey = 'storeName';
+  static const String _tokeKey = 'token';
   static const String _taskStatusKey = 'task_status';
   static const String _loginTimestampKey = 'loginTimestamp';
+  static const String _inventoryEnabledKey = 'inventoryEnabled';
+  static const String _customerEnabledKey = 'customerEnabled';
+
+
+  // ذخیره مقدار inventoryEnabled
+  static Future<void> saveInventoryEnabled(bool value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_inventoryEnabledKey, value);
+  }
+
+  // خواندن مقدار inventoryEnabled
+  static Future<bool> getInventoryEnabled() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(_inventoryEnabledKey) ?? false;
+  }
+
+  // پاک کردن مقدار inventoryEnabled
+  static Future<void> clearInventoryEnabled() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_inventoryEnabledKey);
+  }
+
+  // ذخیره مقدار customerEnabled
+  static Future<void> saveCustomerEnabled(bool value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_customerEnabledKey, value);
+  }
+
+  // خواندن مقدار customerEnabled
+  static Future<bool> getCustomerEnabled() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(_customerEnabledKey) ?? false;
+  }
+
+  // پاک کردن مقدار customerEnabled
+  static Future<void> clearCustomerEnabled() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_customerEnabledKey);
+  }
 
   static Future<void> saveTaskStatus(List<TaskStatus?> taskList) async {
     final prefs = await SharedPreferences.getInstance();
@@ -147,6 +188,26 @@ class UserPrefs {
   static Future<void> clearLoginTimestamp() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_loginTimestampKey);
+  }
+
+  static Future<void> saveStoreName(String storeName) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_storeNameKey, storeName);
+  }
+
+  static Future<String?> getStoreName() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_storeNameKey);
+  }
+
+  static Future<void> saveToken(String token) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_tokeKey, token);
+  }
+
+  static Future<String?> getToken() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_tokeKey);
   }
 
 }

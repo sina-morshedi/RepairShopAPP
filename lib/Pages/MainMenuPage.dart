@@ -7,6 +7,7 @@ import 'LoginPage.dart';
 import 'ManagerMenu.dart';
 import 'RepairmanMenu.dart';
 import 'user_prefs.dart';
+import 'Dashboard.dart';
 
 class MainMenuPage extends StatefulWidget {
   const MainMenuPage({super.key});
@@ -19,15 +20,18 @@ class _MainMenuPageState extends State<MainMenuPage> {
   bool isRoleSelected = false;
   String selectedRole = "";
   UserProfileDTO? user;
+  bool? _inventoryEnabled;
 
   @override
   void initState() {
     super.initState();
     _checkLoginStatus();
     _loadUserProfileDTO();
+
   }
 
   void _loadUserProfileDTO() async {
+    _inventoryEnabled = await UserPrefs.getInventoryEnabled();
     final loadedUser = await UserPrefs.getUserWithID();
 
     if (mounted) {
@@ -59,6 +63,8 @@ class _MainMenuPageState extends State<MainMenuPage> {
 
   Widget _buildRoleWidget() {
     switch (selectedRole) {
+      case "dashboard":
+        return Dashboard();
       case "manager":
         return ManagerMenu(selectedRole: selectedRole);
       case "secretary":
@@ -70,20 +76,31 @@ class _MainMenuPageState extends State<MainMenuPage> {
     }
   }
 
-  Widget _buildRoleButton(String title, IconData icon, String roleKey) {
-    return ElevatedButton(
-      onPressed: () => _onRoleSelected(roleKey),
-      style: ElevatedButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12)),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon),
-          const SizedBox(width: 8),
-          Text(title),
-        ],
+  Widget _buildRoleButton(BuildContext context, String title, IconData icon, String roleKey) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final buttonWidth = screenWidth * 0.6; // 60 درصد عرض صفحه
+
+    return SizedBox(
+      width: buttonWidth,
+      child: ElevatedButton(
+        onPressed: () => _onRoleSelected(roleKey),
+        style: ElevatedButton.styleFrom(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+          minimumSize: const Size.fromHeight(48),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon),
+            const SizedBox(width: 8),
+            Text(title),
+          ],
+        ),
       ),
     );
   }
+
 
   Widget _buildRoleSelection() {
     if (user == null) {
@@ -94,15 +111,21 @@ class _MainMenuPageState extends State<MainMenuPage> {
 
     // اگر دسترسی مدیر دارد، همه دکمه‌ها را نشان بده
     if (user!.permission.permissionName.contains("Yönetici")) {
-      buttons.add(_buildRoleButton("Yönetici", Icons.admin_panel_settings, "manager"));
+      buttons.add(_buildRoleButton(context, "Dashboard", Icons.dashboard, "dashboard"));
       buttons.add(const SizedBox(height: 20));
-      buttons.add(_buildRoleButton("Sekreter", Icons.person, "secretary"));
+      if(_inventoryEnabled!){
+        buttons.add(_buildRoleButton(context, "Yedek Parça", Icons.inventory, "inventory"));
+        buttons.add(const SizedBox(height: 20));
+      }
+      buttons.add(_buildRoleButton(context, "Yönetici", Icons.admin_panel_settings, "manager"));
       buttons.add(const SizedBox(height: 20));
-      buttons.add(_buildRoleButton("Tamirci", Icons.build, "technician"));
+      buttons.add(_buildRoleButton(context, "Sekreter", Icons.person, "secretary"));
+      buttons.add(const SizedBox(height: 20));
+      buttons.add(_buildRoleButton(context, "Tamirci", Icons.build, "technician"));
     } else if (user!.permission.permissionName.contains("sekreter")) {
-      buttons.add(_buildRoleButton("Sekreter", Icons.person, "secretary"));
+      buttons.add(_buildRoleButton(context, "Sekreter", Icons.person, "secretary"));
     } else if (user!.permission.permissionName.contains("Tamirci")) {
-      buttons.add(_buildRoleButton("Tamirci", Icons.build, "technician"));
+      buttons.add(_buildRoleButton(context, "Tamirci", Icons.build, "technician"));
     }
 
     if (buttons.isEmpty) {
@@ -158,7 +181,11 @@ class _MainMenuPageState extends State<MainMenuPage> {
               },
             ),
             title: Text(
-              selectedRole == "manager"
+                  selectedRole == "dashboard"
+                  ? "Dashboard Menüsü"
+                  : selectedRole == "inventory"
+                  ? "Yedek Parça Menüsü"
+                  : selectedRole == "manager"
                   ? "Yönetici Menüsü"
                   : selectedRole == "secretary"
                   ? "Sekreter Menüsü"

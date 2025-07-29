@@ -2,12 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:water_drop_nav_bar/water_drop_nav_bar.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'GetCarProblemPage-Backup.dart';
-
 import 'LoginPage.dart';
 import 'UserProfilePage.dart';
 import 'WorkespacePage.dart';
 import 'ProjectManageForm.dart';
+import 'ProjectManagePage.dart';
 import 'InvoiceForm.dart';
 import 'ReportsForm.dart';
 import 'SettingsForm.dart';
@@ -35,7 +34,7 @@ class _ManagerMenuState extends State<ManagerMenu> {
     _checkLoginStatus();
 
     _pages = [
-      ProjectmanageForm(),
+      ProjectManagePage(),
       InvoiceForm(),
       ReportsForm(),
       SettingsForm(),
