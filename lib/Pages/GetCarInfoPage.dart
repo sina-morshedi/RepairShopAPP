@@ -8,7 +8,9 @@ import 'package:autonetwork/DTO/CarInfo.dart';
 import 'package:autonetwork/backend_services/ApiEndpoints.dart';
 
 class GetCarInfoPage extends StatefulWidget {
-  const GetCarInfoPage({super.key});
+  final void Function(String plate)? onSuccess;
+
+  const GetCarInfoPage({Key? key, this.onSuccess}) : super(key: key);
 
   @override
   State<GetCarInfoPage> createState() => _GetCarInfoPageState();
@@ -25,19 +27,35 @@ class _GetCarInfoPageState extends State<GetCarInfoPage>
   final TextEditingController brandController = TextEditingController();
   final TextEditingController modelController = TextEditingController();
   final TextEditingController yearController = TextEditingController();
-  final TextEditingController fuelTypeController = TextEditingController();
+
+  final FocusNode chassisFocus = FocusNode();
+  final FocusNode motorFocus = FocusNode();
+  final FocusNode plateFocus = FocusNode();
+  final FocusNode brandFocus = FocusNode();
+  final FocusNode modelFocus = FocusNode();
+  final FocusNode yearFocus = FocusNode();
+
+  String? selectedFuelType;
 
   bool isEditEnabled = false;
   bool searchCompleted = false;
 
   static const List<String> tag_labelText = [
+    "PLAKA",
     "ŞASE NO",
     "MOTOR NO",
-    "PLAKA",
     "MARKASI",
     "TİCARİ ADI",
     "MODEL YILI",
     "YAKIT CİNSİ",
+  ];
+
+  static const List<String> fuelTypes = [
+    "BENZİNLİ",
+    "DİZEL",
+    "LPG",
+    "BENZİNLİ LPG",
+    "ELEKTRİKLİ"
   ];
 
   @override
@@ -63,8 +81,26 @@ class _GetCarInfoPageState extends State<GetCarInfoPage>
     brandController.clear();
     modelController.clear();
     yearController.clear();
-    fuelTypeController.clear();
+    selectedFuelType = null;
   }
+
+  String? getClosestFuelType(String rawValue) {
+    rawValue = rawValue.toUpperCase();
+
+    // exact match
+    if (fuelTypes.contains(rawValue)) return rawValue;
+
+    // loose match (find first that contains input or vice versa)
+    for (var type in fuelTypes) {
+      if (type.contains(rawValue) || rawValue.contains(type)) {
+        return type;
+      }
+    }
+
+    // fallback to first item (optional)
+    return null;
+  }
+
 
   Future<void> searchByPlate() async {
     final response = await CarInfoApi()
@@ -79,7 +115,9 @@ class _GetCarInfoPageState extends State<GetCarInfoPage>
         brandController.text = car.brand;
         modelController.text = car.brandModel;
         yearController.text = car.modelYear?.toString() ?? '';
-        fuelTypeController.text = car.fuelType;
+
+        // 🔸 اصلاح مهم در این‌جا:
+        selectedFuelType = getClosestFuelType(car.fuelType);
         searchCompleted = true;
       });
     } else {
@@ -89,6 +127,7 @@ class _GetCarInfoPageState extends State<GetCarInfoPage>
       );
     }
   }
+
 
   bool get isInputEnabled => !isEditEnabled || (isEditEnabled && searchCompleted);
 
@@ -100,7 +139,7 @@ class _GetCarInfoPageState extends State<GetCarInfoPage>
       brand: brandController.text.trim(),
       brandModel: modelController.text.toUpperCase(),
       modelYear: int.tryParse(yearController.text),
-      fuelType: fuelTypeController.text.toUpperCase(),
+      fuelType: selectedFuelType ?? "",
       dateTime: DateTime.now().toIso8601String(),
     );
 
@@ -117,6 +156,7 @@ class _GetCarInfoPageState extends State<GetCarInfoPage>
 
     if (response.status != 'error') {
       StringHelper.showInfoDialog(context, 'Başarılı işlem');
+      widget.onSuccess?.call(licensePlateNoController.text.trim().toUpperCase());
     } else {
       StringHelper.showErrorDialog(context, response.message ?? 'Hata');
     }
@@ -132,7 +172,12 @@ class _GetCarInfoPageState extends State<GetCarInfoPage>
     brandController.dispose();
     modelController.dispose();
     yearController.dispose();
-    fuelTypeController.dispose();
+    chassisFocus.dispose();
+    motorFocus.dispose();
+    plateFocus.dispose();
+    brandFocus.dispose();
+    modelFocus.dispose();
+    yearFocus.dispose();
     super.dispose();
   }
 
@@ -184,19 +229,39 @@ class _GetCarInfoPageState extends State<GetCarInfoPage>
       padding: const EdgeInsets.all(16),
       child: Column(
         children: [
-          _buildTextField(chassisNoController, tag_labelText[0]),
+          _buildTextField(licensePlateNoController, tag_labelText[0], focusNode: plateFocus, nextFocus: chassisFocus),
           const SizedBox(height: 10),
-          _buildTextField(motorNoController, tag_labelText[1]),
+          _buildTextField(chassisNoController, tag_labelText[1], focusNode: chassisFocus, nextFocus: motorFocus),
           const SizedBox(height: 10),
-          _buildTextField(licensePlateNoController, tag_labelText[2]),
+          _buildTextField(motorNoController, tag_labelText[2], focusNode: motorFocus, nextFocus: brandFocus),
           const SizedBox(height: 10),
-          _buildTextField(brandController, tag_labelText[3]),
+          _buildTextField(brandController, tag_labelText[3], focusNode: brandFocus, nextFocus: modelFocus),
           const SizedBox(height: 10),
-          _buildTextField(modelController, tag_labelText[4]),
+          _buildTextField(modelController, tag_labelText[4], focusNode: modelFocus, nextFocus: yearFocus),
           const SizedBox(height: 10),
-          _buildTextField(yearController, tag_labelText[5], isNumber: true),
+          _buildTextField(yearController, tag_labelText[5], isNumber: true, focusNode: yearFocus),
           const SizedBox(height: 10),
-          _buildTextField(fuelTypeController, tag_labelText[6]),
+          DropdownButtonFormField<String>(
+            value: selectedFuelType,
+            items: fuelTypes.map((type) {
+              return DropdownMenuItem<String>(
+                value: type,
+                child: Text(type),
+              );
+            }).toList(),
+            onChanged: isInputEnabled
+                ? (value) => setState(() {
+              selectedFuelType = value!;
+            })
+                : null,
+            decoration: InputDecoration(
+              labelText: tag_labelText[6],
+              border: const OutlineInputBorder(),
+            ),
+            onTap: () {
+              FocusScope.of(context).unfocus();
+            },
+          ),
           const SizedBox(height: 20),
           ElevatedButton(
             onPressed: isInputEnabled ? saveCarInfo : null,
@@ -208,9 +273,10 @@ class _GetCarInfoPageState extends State<GetCarInfoPage>
   }
 
   Widget _buildTextField(TextEditingController controller, String label,
-      {bool isNumber = false}) {
+      {bool isNumber = false, FocusNode? focusNode, FocusNode? nextFocus}) {
     return TextField(
       controller: controller,
+      focusNode: focusNode,
       decoration: InputDecoration(
         labelText: label,
         border: const OutlineInputBorder(),
@@ -218,6 +284,13 @@ class _GetCarInfoPageState extends State<GetCarInfoPage>
       keyboardType: isNumber ? TextInputType.number : TextInputType.text,
       enabled: isInputEnabled,
       textCapitalization: TextCapitalization.characters,
+      onSubmitted: (_) {
+        if (nextFocus != null) {
+          FocusScope.of(context).requestFocus(nextFocus);
+        } else {
+          FocusScope.of(context).unfocus();
+        }
+      },
     );
   }
 }

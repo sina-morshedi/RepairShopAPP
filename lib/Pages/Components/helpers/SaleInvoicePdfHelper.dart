@@ -1,7 +1,13 @@
-import 'dart:typed_data';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
-import 'package:universal_html/html.dart' as html;
+
+// فقط برای موبایل/دسکتاپ
+import 'dart:io';
+import 'package:path_provider/path_provider.dart';
+import 'package:open_file/open_file.dart';
+
+import '../../../DTO/PartUsed.dart';
+import '../../../DTO/CarRepairLogResponseDTO.dart';
 import '../../../DTO/InventorySaleLogDTO.dart';
 import '../../../DTO/SaleItem.dart';
 
@@ -18,7 +24,8 @@ class SaleInvoicePdfHelper {
     final now = saleLog.saleDate ?? DateTime.now();
     final formattedDate =
         "${now.year}/${now.month.toString().padLeft(2, '0')}/${now.day.toString().padLeft(2, '0')}";
-    final invoiceNumber = "S-${now.year}${now.month.toString().padLeft(2, '0')}${now.day.toString().padLeft(2, '0')}-${saleLog.customerName ?? 'Musteri'}";
+    final invoiceNumber =
+        "S-${now.year}${now.month.toString().padLeft(2, '0')}${now.day.toString().padLeft(2, '0')}-${saleLog.customerName ?? 'Musteri'}";
 
     final total = saleLog.totalAmount ?? 0.0;
     final totalPaid = saleLog.paymentRecords?.fold<double>(
@@ -55,7 +62,7 @@ class SaleInvoicePdfHelper {
           pw.SizedBox(height: 24),
 
           pw.Text("Satılan Parçalar:",
-              style: pw.TextStyle(fontSize: titleFontSize-4, font: customFont)),
+              style: pw.TextStyle(fontSize: titleFontSize - 4, font: customFont)),
           pw.Table.fromTextArray(
             headers: ['#', 'Parça Adı', 'Adet', 'Birim Fiyat', 'Toplam'],
             data: List.generate(saleLog.soldItems?.length ?? 0, (index) {
@@ -80,15 +87,15 @@ class SaleInvoicePdfHelper {
           pw.Align(
             alignment: pw.Alignment.centerRight,
             child: pw.Text("Toplam: ${total.toStringAsFixed(2)} ₺",
-                style: pw.TextStyle(fontSize: titleFontSize-6, font: customFont)),
+                style: pw.TextStyle(fontSize: titleFontSize - 6, font: customFont)),
           ),
 
-          if (saleLog.paymentRecords != null &&
-              saleLog.paymentRecords!.isNotEmpty) ...[
+          // بخش پرداخت‌ها با چک null و isEmpty
+          if (saleLog.paymentRecords != null && saleLog.paymentRecords!.isNotEmpty) ...[
             pw.SizedBox(height: 24),
             pw.Text("Ödeme Kayıtları:",
                 style: pw.TextStyle(
-                    fontSize: titleFontSize-4,
+                    fontSize: titleFontSize - 4,
                     fontWeight: pw.FontWeight.bold,
                     font: customFont)),
             pw.SizedBox(height: 8),
@@ -108,7 +115,7 @@ class SaleInvoicePdfHelper {
               child: pw.Text(
                 "Ödenen Toplam: ${totalPaid.toStringAsFixed(2)} ₺",
                 style: pw.TextStyle(
-                    fontSize: titleFontSize-8,
+                    fontSize: titleFontSize - 8,
                     fontWeight: pw.FontWeight.bold,
                     font: customFont),
               ),
@@ -119,40 +126,52 @@ class SaleInvoicePdfHelper {
               child: pw.Text(
                 "Kalan Tutar: ${remaining.toStringAsFixed(2)} ₺",
                 style: pw.TextStyle(
-                    fontSize: titleFontSize-8,
+                    fontSize: titleFontSize - 8,
                     fontWeight: pw.FontWeight.bold,
                     color: PdfColors.red,
                     font: customFont),
               ),
             ),
             pw.SizedBox(height: 24),
-
-            pw.Container(
-              padding: const pw.EdgeInsets.all(12),
-              decoration: pw.BoxDecoration(
-                border: pw.Border.all(color: PdfColors.grey),
-                borderRadius: pw.BorderRadius.circular(6),
-                color: PdfColors.grey200,
-              ),
-              child: pw.Text(
-                '''Not: 
-                  FARUK KARABACAK
-                  GARANTİ BANKASI
-                  IBAN  : TR87 0006 2001 2010 0006 6536 55''',
-                style: pw.TextStyle(fontSize: fontSize, font: customFont),
-              ),
-            ),
+          ] else ...[
+            pw.SizedBox(height: 24),
+            pw.Text('Ödeme kaydı bulunamadı.',
+                style: pw.TextStyle(
+                    fontSize: fontSize,
+                    fontStyle: pw.FontStyle.italic,
+                    font: customFont)),
+            pw.SizedBox(height: 24),
           ],
+
+          // باکس یادداشت (Note) همیشه نمایش داده می‌شود
+          pw.Container(
+            padding: const pw.EdgeInsets.all(12),
+            decoration: pw.BoxDecoration(
+              border: pw.Border.all(color: PdfColors.grey),
+              borderRadius: pw.BorderRadius.circular(6),
+              color: PdfColors.grey200,
+            ),
+            child: pw.Text(
+              '''Not: 
+FARUK KARABACAK
+GARANTİ BANKASI
+IBAN  : TR87 0006 2001 2010 0006 6536 55''',
+              style: pw.TextStyle(fontSize: fontSize, font: customFont),
+            ),
+          ),
         ],
       ),
     );
 
     final bytes = await pdf.save();
-    final blob = html.Blob([bytes]);
-    final url = html.Url.createObjectUrlFromBlob(blob);
-    final anchor = html.AnchorElement(href: url)
-      ..setAttribute("download", "$invoiceNumber.pdf")
-      ..click();
-    html.Url.revokeObjectUrl(url);
+
+    // مسیر ذخیره فایل در موبایل
+    final directory = await getApplicationDocumentsDirectory();
+    final filePath = "${directory.path}/$invoiceNumber.pdf";
+    final file = File(filePath);
+    await file.writeAsBytes(bytes);
+
+    // باز کردن فایل با اپ پیش‌فرض
+    await OpenFile.open(filePath);
   }
 }

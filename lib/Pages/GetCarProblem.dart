@@ -3,9 +3,7 @@ import 'package:autonetwork/DTO/CarRepairLogResponseDTO.dart';
 import 'package:autonetwork/DTO/CarRepairLogRequestDTO.dart';
 import 'package:autonetwork/DTO/CarProblemReportRequestDTO.dart';
 import 'package:autonetwork/DTO/TaskStatusDTO.dart';
-import 'package:autonetwork/DTO/FilterRequestDTO.dart';
-import 'package:autonetwork/DTO/PartUsed.dart';
-import 'package:autonetwork/DTO/PaymentRecord.dart';
+import 'package:autonetwork/DTO/CarInfoDTO.dart';
 import 'package:flutter/material.dart';
 import '../type.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
@@ -13,14 +11,12 @@ import 'user_prefs.dart';
 import 'package:autonetwork/DTO/UserProfileDTO.dart';
 import 'Components/ShareComponents.dart';
 import 'Components/CarRepairedLogCard.dart';
-import 'Components/CarRepairLogListView.dart';
 import '../backend_services/backend_services.dart';
 import 'package:autonetwork/Pages/Components/helpers/app_helpers.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:pdf/widgets.dart' as pw;
-import 'Components/helpers/invoice_pdf_helper.dart';
-import 'Components/DecimalTextInputFormatter.dart';
+import 'package:flutter_typeahead/flutter_typeahead.dart';
 
 
 
@@ -228,7 +224,7 @@ class _GetCarProblemState extends State<GetCarProblem>
       }
       else {
         await StringHelper.showErrorDialog(context, response.message!);
-        final confirm = await StringHelper.showConfirmationDialog(context, 'Araç girişini şimdi mi kaydetmek istiyorsunuz?');
+        final confirm = await StringHelper.showConfirmDialog(context, 'Araç girişini şimdi mi kaydetmek istiyorsunuz?');
         if(confirm == true){
           _CarEntry();
         }
@@ -451,12 +447,12 @@ class _GetCarProblemState extends State<GetCarProblem>
     return CarRepairedLogCard(log: carLog!);
   }
 
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
-      //appBar: AppBar(title: const Text("Plaka ile Ara")),
       body: SafeArea(
         child: GestureDetector(
-          onTap: () => FocusScope.of(context).unfocus(),
+          onTap: () => FocusScope.of(context).unfocus(),  // بستن کیبورد روی کلیک بیرون
           child: SlideTransition(
             position: _slideAnimation,
             child: FadeTransition(
@@ -467,13 +463,39 @@ class _GetCarProblemState extends State<GetCarProblem>
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     if (widget.plate == null || widget.plate!.isEmpty) ...[
-                      TextField(
-                        controller: _licensePlateController,
-                        decoration: const InputDecoration(
-                          labelText: "Plaka girin",
-                          border: OutlineInputBorder(),
+                      TypeAheadField<CarInfoDTO>(
+                        textFieldConfiguration: TextFieldConfiguration(
+                          controller: _licensePlateController,
+                          decoration: const InputDecoration(
+                            labelText: "Plaka girin",
+                            border: OutlineInputBorder(),
+                          ),
+                          textCapitalization: TextCapitalization.characters,
+                          onSubmitted: (_) => searchPlate(),
                         ),
-                        textCapitalization: TextCapitalization.characters,
+                        suggestionsCallback: (pattern) async {
+                          if (pattern.trim().isEmpty) return [];
+                          final response = await CarInfoApi().searchCarsByLicensePlateKeyword(pattern);
+                          if (response.status == 'success' && response.data != null) {
+                            return response.data!;
+                          }
+                          return [];
+                        },
+                        itemBuilder: (context, CarInfoDTO suggestion) {
+                          return ListTile(
+                            title: Text(suggestion.licensePlate ?? ''),
+                            subtitle: Text(suggestion.brandModel ?? ''),
+                          );
+                        },
+                        onSuggestionSelected: (CarInfoDTO suggestion) {
+                          _licensePlateController.text = suggestion.licensePlate ?? '';
+                          searchPlate();
+                          FocusScope.of(context).unfocus(); // بستن کیبورد پس از انتخاب
+                        },
+                        noItemsFoundBuilder: (context) => const Padding(
+                          padding: EdgeInsets.all(8.0),
+                          child: Text('Eşleşen araç bulunamadı'),
+                        ),
                       ),
                       const SizedBox(height: 10),
                       ElevatedButton(

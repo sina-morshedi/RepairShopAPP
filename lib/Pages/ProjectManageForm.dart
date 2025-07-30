@@ -155,103 +155,105 @@ class _ProjectmanageFormState extends State<ProjectmanageForm> {
             margin: const EdgeInsets.symmetric(vertical: 8),
             child: Padding(
               padding: const EdgeInsets.all(12),
-              child: Row(
+              child: Column(  // به جای Row کلی
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Expanded(
-                    flex: 3,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        SelectableText(
-                          'Plaka: ${carInfo?.licensePlate ?? "-"}',
-                          style: const TextStyle(fontWeight: FontWeight.bold),
-                        ),
-                        SelectableText('Marka: ${carInfo?.brand ?? ""} ${carInfo?.brandModel ?? ""}'),
-                        SelectableText('Model Yılı: ${carInfo?.modelYear ?? ""}'),
-                        SelectableText('Yakıt Tipi: ${carInfo?.fuelType ?? ""}'),
-                      ],
-                    ),
-                  ),
-
-                  Expanded(
-                    flex: 2,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8.0),
-                      decoration: BoxDecoration(
-                        border: Border.all(color: Colors.grey),
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: DropdownButtonHideUnderline(
-                        child: DropdownButton<String>(
-                          isExpanded: true,
-                          value: selectedUserId,
-                          hint: const Text("Kullanıcı seçin"),
-                          items: users!.map((user) {
-                            return DropdownMenuItem<String>(
-                              value: user.userId,
-                              child: Text('${user.firstName} ${user.lastName}' ?? "No Username"),
-                            );
-                          }).toList(),
-                          onChanged: (value) {
-                            setState(() {
-                              selectedUserIds[originalIndex] = value;
-                              approvedFlags[originalIndex] = false; // وقتی کاربر انتخاب تغییر داد، دکمه غیرفعال شود
-                            });
-                          },
-                        ),
-                      ),
-                    ),
-                  ),
-
-                  const SizedBox(width: 12),
-
-                  if (svgPath != null)
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 8.0),
-                      child: SvgPicture.asset(
-                        svgPath,
-                        width: 50,
-                        height: 50,
-                        placeholderBuilder: (context) =>
-                        const CircularProgressIndicator(strokeWidth: 1.5),
-                      ),
-                    ),
-
-                  const SizedBox(width: 12),
-
-                  Column(
+                  // ردیف اول: اطلاعات ماشین + svg + تیک
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      GestureDetector(
-                        onTap: selectedUserIds[originalIndex] != null && !approvedFlags[originalIndex]
-                            ? () {
-                          _saveCarLog(originalIndex); // فقط ذخیره می‌کنیم، approvedFlag در داخل متد تنظیم میشه
-                        }
-                            : null, // غیرفعال در صورت نبود تعمیرکار یا قبلاً تایید شده
-                        child: Container(
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: selectedUserIds[originalIndex] != null && !approvedFlags[originalIndex]
-                                ? Colors.green.shade100
-                                : Colors.grey.shade300,
-                          ),
-                          padding: const EdgeInsets.all(8),
-                          child: Icon(
-                            Icons.check,
-                            color: selectedUserIds[originalIndex] != null && !approvedFlags[originalIndex]
-                                ? Colors.green
-                                : Colors.grey,
-                            size: 32,
-                          ),
+                      Expanded(
+                        flex: 3,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            SelectableText(
+                              'Plaka: ${carInfo?.licensePlate ?? "-"}',
+                              style: const TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                            SelectableText('Marka: ${carInfo?.brand ?? ""} ${carInfo?.brandModel ?? ""}'),
+                            SelectableText('Model Yılı: ${carInfo?.modelYear ?? ""}'),
+                            SelectableText('Yakıt Tipi: ${carInfo?.fuelType ?? ""}'),
+                          ],
                         ),
                       ),
-
+                      if (svgPath != null)
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                          child: SvgPicture.asset(
+                            svgPath,
+                            width: 50,
+                            height: 50,
+                            placeholderBuilder: (context) =>
+                            const CircularProgressIndicator(strokeWidth: 1.5),
+                          ),
+                        ),
+                      const SizedBox(width: 12),
+                      Column(
+                        children: [
+                          GestureDetector(
+                            onTap: selectedUserIds[originalIndex] != null && !approvedFlags[originalIndex]
+                                ? () {
+                              _saveCarLog(originalIndex);
+                            }
+                                : null,
+                            child: Container(
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: selectedUserIds[originalIndex] != null && !approvedFlags[originalIndex]
+                                    ? Colors.green.shade100
+                                    : Colors.grey.shade300,
+                              ),
+                              padding: const EdgeInsets.all(8),
+                              child: Icon(
+                                Icons.check,
+                                color: selectedUserIds[originalIndex] != null && !approvedFlags[originalIndex]
+                                    ? Colors.green
+                                    : Colors.grey,
+                                size: 32,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                     ],
+                  ),
+
+                  const SizedBox(height: 12), // فاصله بین دو ردیف
+
+                  // ردیف دوم: دراپ‌داون باکس به صورت تمام عرض
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                    decoration: BoxDecoration(
+                      border: Border.all(color: Colors.grey),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: DropdownButtonHideUnderline(
+                      child: DropdownButton<String>(
+                        isExpanded: true,
+                        value: selectedUserId,
+                        hint: const Text("Kullanıcı seçin"),
+                        items: users!.map((user) {
+                          return DropdownMenuItem<String>(
+                            value: user.userId,
+                            child: Text('${user.firstName} ${user.lastName}' ?? "No Username"),
+                          );
+                        }).toList(),
+                        onChanged: (value) {
+                          setState(() {
+                            selectedUserIds[originalIndex] = value;
+                            approvedFlags[originalIndex] = false;
+                          });
+                        },
+                      ),
+                    ),
                   ),
                 ],
               ),
             ),
           );
+
         }),
       ),
     );

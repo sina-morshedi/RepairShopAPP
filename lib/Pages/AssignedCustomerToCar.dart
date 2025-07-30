@@ -6,10 +6,12 @@ import '../backend_services/backend_services.dart';
 import '../DTO/CustomerDTO.dart';
 import '../DTO/CarRepairLogRequestDTO.dart';
 import '../DTO/CarRepairLogResponseDTO.dart';
+import '../DTO/CarInfoDTO.dart';
 import 'Components/CarRepairedLogCard.dart';
 import 'Components/CarRepairLogListView.dart';
 import 'CustomerInfoCard.dart';
 import 'Components/helpers/app_helpers.dart';
+import 'package:flutter_typeahead/flutter_typeahead.dart';
 
 class AssignedCustomerToCar extends StatefulWidget {
   const AssignedCustomerToCar({super.key});
@@ -123,87 +125,116 @@ class _AssignedCustomerToCarState extends State<AssignedCustomerToCar> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _licensePlateController,
-                    decoration: InputDecoration(
-                      labelText: 'Plaka Girin',
-                      suffixIcon: IconButton(
-                        icon: const Icon(Icons.search),
-                        onPressed: () {
-                          String licensePlate = _licensePlateController.text.toUpperCase();
-                          _searchLogsByLicensePlate(licensePlate);
+      body: GestureDetector(
+        onTap: () => FocusScope.of(context).unfocus(),  // بستن کیبورد با کلیک بیرون
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: TypeAheadField<CarInfoDTO>(
+                      textFieldConfiguration: TextFieldConfiguration(
+                        controller: _licensePlateController,
+                        decoration: InputDecoration(
+                          labelText: 'Plaka Girin',
+                          border: const OutlineInputBorder(),
+                          suffixIcon: IconButton(
+                            icon: const Icon(Icons.search),
+                            onPressed: () {
+                              String licensePlate = _licensePlateController.text.toUpperCase();
+                              _searchLogsByLicensePlate(licensePlate);
+                              FocusScope.of(context).unfocus();  // بستن کیبورد هنگام کلیک روی دکمه
+                            },
+                          ),
+                        ),
+                        textCapitalization: TextCapitalization.characters,
+                        onSubmitted: (value) {
+                          _searchLogsByLicensePlate(value.toUpperCase());
+                          FocusScope.of(context).unfocus();
                         },
+                      ),
+                      suggestionsCallback: (pattern) async {
+                        if (pattern.trim().isEmpty) return [];
+                        final response = await CarInfoApi().searchCarsByLicensePlateKeyword(pattern);
+                        if (response.status == 'success' && response.data != null) {
+                          return response.data!;
+                        }
+                        return [];
+                      },
+                      itemBuilder: (context, CarInfoDTO suggestion) {
+                        return ListTile(
+                          title: Text(suggestion.licensePlate ?? ''),
+                          subtitle: Text(suggestion.brandModel ?? ''),
+                        );
+                      },
+                      onSuggestionSelected: (CarInfoDTO suggestion) {
+                        _licensePlateController.text = suggestion.licensePlate ?? '';
+                        _searchLogsByLicensePlate(_licensePlateController.text.toUpperCase());
+                        FocusScope.of(context).unfocus();  // بستن کیبورد پس از انتخاب
+                      },
+                      noItemsFoundBuilder: (context) => const Padding(
+                        padding: EdgeInsets.all(8.0),
+                        child: Text('Eşleşen araç bulunamadı'),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+
+              const SizedBox(height: 20),
+
+              if (log != null) ...[
+                CarRepairedLogCard(log: log!),
+                const SizedBox(height: 20),
+
+                if (log!.customer == null) ...[
+                  TextField(
+                    controller: _customerNameController,
+                    decoration: InputDecoration(
+                      labelText: 'Müşteri adı',
+                      suffixIcon: IconButton(
+                        icon: const Icon(EvaIcons.search),
+                        onPressed: _searchCustomer,
                       ),
                       border: const OutlineInputBorder(),
                     ),
                   ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 20),
-
-            // اگر لاگ پیدا شد
-            if (log != null) ...[
-              CarRepairedLogCard(log: log!),
-              const SizedBox(height: 20),
-
-              // اگر مشتری نال باشد، جستجو برای مشتری را نمایش بده
-              if (log!.customer == null) ...[
-                TextField(
-                  controller: _customerNameController, // کنترلر جدید برای جستجوی مشتری
-                  decoration: InputDecoration(
-                    labelText: 'Müşteri adı',
-                    suffixIcon: IconButton(
-                      icon: const Icon(EvaIcons.search),
-                      onPressed: _searchCustomer,
+                  const SizedBox(height: 16),
+                  if (customerData != null && customerData!.isNotEmpty)
+                    CustomerListCard(
+                      customers: customerData!,
+                      selectedCustomer: selectedCustomer,
+                      onSelected: (c) => setState(() => selectedCustomer = c),
                     ),
-                    border: const OutlineInputBorder(),
-                  ),
-                ),
-                const SizedBox(height: 16),
+                ],
+              ],
 
-                if (customerData != null && customerData!.isNotEmpty)
-                  CustomerListCard(
-                    customers: customerData!,
-                    selectedCustomer: selectedCustomer,
-                    onSelected: (c) => setState(() => selectedCustomer = c),
-                  ),
+              if (log == null && !isLoading) ...[
+                const SizedBox(height: 16),
+                Text("Araba bulunamadı ya da log bulunamadı."),
+              ],
+
+              const SizedBox(height: 20),
+
+              if (selectedCustomer != null) ...[
+                ElevatedButton(
+                  onPressed: () {
+                    if (selectedCustomer != null) {
+                      _saveLog();
+                    }
+                  },
+                  child: const Text('Müşteri Seçildi'),
+                ),
+              ],
+
+              if (isLoading) ...[
+                const SizedBox(height: 20),
+                CircularProgressIndicator(),
               ],
             ],
-
-            // اگر لاگ پیدا نشد
-            if (log == null && !isLoading) ...[
-              const SizedBox(height: 16),
-              Text("Araba bulunamadı ya da log bulunamadı."),
-            ],
-
-            const SizedBox(height: 20),
-
-            // اگر مشتری انتخاب شد
-            if (selectedCustomer != null) ...[
-              ElevatedButton(
-                onPressed: () {
-                  if (selectedCustomer != null) {
-                    _saveLog();
-                  }
-                },
-                child: const Text('Müşteri Seçildi'),
-              ),
-            ],
-
-            // نشانگر بارگذاری در صورت بارگذاری داده‌ها
-            if (isLoading) ...[
-              const SizedBox(height: 20),
-              CircularProgressIndicator(),
-            ],
-          ],
+          ),
         ),
       ),
     );

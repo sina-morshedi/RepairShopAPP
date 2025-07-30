@@ -11,6 +11,7 @@ import 'GetCarProblem.dart';
 import 'ProjectManageForm.dart';
 import 'RepairmanLogTaskInFlow.dart';
 import 'Invoice_Daily.dart';
+import 'GetCarInfoPage.dart';
 
 class TaskFlowManager extends StatefulWidget {
 

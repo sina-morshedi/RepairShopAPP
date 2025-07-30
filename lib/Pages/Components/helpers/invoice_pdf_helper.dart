@@ -1,10 +1,5 @@
-import 'dart:typed_data';
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
-
-// فقط برای وب
-import 'package:universal_html/html.dart' as html;
 
 // فقط برای موبایل/دسکتاپ
 import 'dart:io';

@@ -11,7 +11,7 @@ class StringHelper {
     }
   }
 
-  static void ShowDetailsLogDialog(BuildContext context, CarRepairLogResponseDTO log) async {
+  static Future<void> ShowDetailsLogDialog(BuildContext context, CarRepairLogResponseDTO log) async {
     showDialog(
       context: context,
       builder: (context) {
@@ -51,15 +51,18 @@ class StringHelper {
   }
 
   static Future<void> showErrorDialog(BuildContext context, String errorMessage) async{
-    return showDialog(
+    showDialog(
       context: context,
       builder: (context) {
         return AlertDialog(
           title: Row(
             children: [
-              Icon(EvaIcons.alertTriangle, color: Colors.red),
+              Icon(EvaIcons.alertTriangle, color: Colors.red), // Eva error icon
               SizedBox(width: 8),
-              Text('Hata:', style: TextStyle(fontWeight: FontWeight.bold)),
+              Text(
+                'Hata:',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
             ],
           ),
           content: Text(errorMessage),
@@ -73,7 +76,6 @@ class StringHelper {
       },
     );
   }
-
 
   static Future<void> showInfoDialog(BuildContext context, String errorMessage) async{
     showDialog(
@@ -101,35 +103,36 @@ class StringHelper {
     );
   }
 
-  static Future<bool> showConfirmationDialog(BuildContext context, String question) async {
+  static Future<bool> showConfirmDialog(BuildContext context, String message) async {
     final result = await showDialog<bool>(
       context: context,
       builder: (context) {
         return AlertDialog(
           title: Row(
             children: [
-              Icon(EvaIcons.questionMarkCircle, color: Colors.orange),
-              SizedBox(width: 8),
-              Text('Soru:', style: TextStyle(fontWeight: FontWeight.bold)),
+              Icon(EvaIcons.alertTriangleOutline, color: Colors.orange), // آیکون هشدار چپ
+              const SizedBox(width: 8),
+              const Text('Onayla:', style: TextStyle(fontWeight: FontWeight.bold)),
+              const SizedBox(width: 8),
+              Icon(Icons.help_outline, color: Colors.orange), // آیکون هشدار راست
             ],
           ),
-          content: Text(question),
+          content: Text(message),
           actions: [
             TextButton(
-              onPressed: () => Navigator.of(context).pop(false), // رد کردن
-              child: Text('Red'),
+              onPressed: () => Navigator.of(context).pop(false), // انصراف
+              child: const Text('İptal'),
             ),
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(true), // قبول کردن
-              child: Text('Kabul Ediyorum'),
+            ElevatedButton(
+              onPressed: () => Navigator.of(context).pop(true), // تأیید
+              child: const Text('Onayla'),
             ),
           ],
         );
       },
     );
 
-    // اگر کاربر دایالوگ را بست (مثلاً دکمه بک زد)، مقدار false برمی‌گردانیم
-    return result ?? false;
+    return result ?? false; // اگر دیالوگ بسته شد بدون انتخاب، false برگردون
   }
 
 }

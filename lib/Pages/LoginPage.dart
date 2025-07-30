@@ -248,7 +248,8 @@ class _LoginPageState extends State<LoginPage> {
 
             SizedBox(height: 30),
             Text(
-              '© 2025 Sina Morshedi - v$_appVersion',
+              '© 2025 Sina Morshedi - v$_appVersion'
+             +'      sina.morshedi@gmail.com      ',
               textAlign: TextAlign.center,
               style: TextStyle(color: Colors.grey, fontSize: 12),
             ),

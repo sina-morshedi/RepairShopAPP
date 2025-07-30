@@ -2,6 +2,8 @@ import 'package:autonetwork/Pages/user_prefs.dart';
 import 'package:flutter/material.dart';
 import 'package:eva_icons_flutter/eva_icons_flutter.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:flutter_typeahead/flutter_typeahead.dart';
+
 import '../backend_services/backend_services.dart';
 import '../DTO/CarInfoDTO.dart';
 import '../DTO/CustomerDTO.dart';
@@ -55,7 +57,6 @@ class _CarEntryState extends State<CarEntry> {
       _searchPlate();
     }
   }
-
 
   Future<void> _searchPlate() async {
     final plate = _plateController.text.trim().toUpperCase();
@@ -167,112 +168,137 @@ class _CarEntryState extends State<CarEntry> {
 
   @override
   Widget build(BuildContext context) {
-    return Stack(
-      children: [
-        SingleChildScrollView(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              if (widget.initialPlate == null) ...[
-                TextField(
-                  controller: _plateController,
-                  onSubmitted: (_) => _searchPlate(),
-                  decoration: InputDecoration(
-                    labelText: 'Plaka giriniz',
-                    suffixIcon: IconButton(
-                      icon: const Icon(EvaIcons.search),
-                      onPressed: _searchPlate,
-                    ),
-                    border: const OutlineInputBorder(),
-                  ),
-                ),
-                const SizedBox(height: 16),
-              ],
-
-              const SizedBox(height: 16),
-
-              if (selectedCar != null) CarInfoCard(car: selectedCar!),
-
-              const SizedBox(height: 24),
-
-              if (latestLog == null || latestLog!.taskStatus.taskStatusName == "GÖREV YOK") ...[
-                if (selectedCar != null) ...[
-                  TextField(
-                    controller: _customerNameController,
-                    onSubmitted: (_) => _searchCustomer(),
-                    decoration: InputDecoration(
-                      labelText: 'Müşteri adı',
-                      suffixIcon: IconButton(
-                        icon: const Icon(EvaIcons.search),
-                        onPressed: _searchCustomer,
+    return GestureDetector(
+      onTap: () => FocusScope.of(context).unfocus(), // بستن کیبورد وقتی بیرون کلیک شد
+      child: Stack(
+        children: [
+          SingleChildScrollView(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (widget.initialPlate == null) ...[
+                  TypeAheadField<CarInfoDTO>(
+                    textFieldConfiguration: TextFieldConfiguration(
+                      controller: _plateController,
+                      decoration: const InputDecoration(
+                        labelText: 'Plaka giriniz',
+                        border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.search),
                       ),
-                      border: const OutlineInputBorder(),
+                      onSubmitted: (_) => _searchPlate(),
+                    ),
+                    suggestionsCallback: (pattern) async {
+                      if (pattern.trim().isEmpty) return [];
+                      final response = await CarInfoApi().searchCarsByLicensePlateKeyword(pattern);
+                      if (response.status == 'success' && response.data != null) {
+                        return response.data!;
+                      }
+                      return [];
+                    },
+                    itemBuilder: (context, CarInfoDTO suggestion) {
+                      return ListTile(
+                        title: Text(suggestion.licensePlate ?? ''),
+                        subtitle: Text(suggestion.brandModel ?? ''),
+                      );
+                    },
+                    onSuggestionSelected: (CarInfoDTO suggestion) {
+                      _plateController.text = suggestion.licensePlate ?? '';
+                      _searchPlate();
+                      FocusScope.of(context).unfocus(); // بستن کیبورد بعد انتخاب
+                    },
+                    noItemsFoundBuilder: (context) => const Padding(
+                      padding: EdgeInsets.all(8.0),
+                      child: Text('Eşleşen araç bulunamadı'),
                     ),
                   ),
+                  const SizedBox(height: 16),
                 ],
 
                 const SizedBox(height: 16),
 
-                if (customerData != null && customerData!.isNotEmpty)
-                  CustomerListCard(
-                    customers: customerData!,
-                    selectedCustomer: selectedCustomer,
-                    onSelected: (c) => setState(() => selectedCustomer = c),
-                  ),
+                if (selectedCar != null) CarInfoCard(car: selectedCar!),
 
                 const SizedBox(height: 24),
 
-                if (selectedCar != null)
-                  Center(
-                    child: ElevatedButton.icon(
-                      onPressed: () {
-                        if (selectedCustomer == null) {
-                          StringHelper.showErrorDialog(context, 'Lütfen bir müşteri seçiniz.');
-                          return;
-                        }
+                if (latestLog == null || latestLog!.taskStatus.taskStatusName == "GÖREV YOK") ...[
+                  if (selectedCar != null) ...[
+                    TextField(
+                      controller: _customerNameController,
+                      onSubmitted: (_) => _searchCustomer(),
+                      decoration: InputDecoration(
+                        labelText: 'Müşteri adı',
+                        suffixIcon: IconButton(
+                          icon: const Icon(EvaIcons.search),
+                          onPressed: _searchCustomer,
+                        ),
+                        border: const OutlineInputBorder(),
+                      ),
+                    ),
+                  ],
 
-                        if (!foundLog || latestLog!.taskStatus.taskStatusName == 'GÖREV YOK') {
-                          _submitEntry();
-                        } else {
-                          StringHelper.showErrorDialog(context, 'Araba şu anda tamir aşamasında.');
-                        }
-                      },
-                      icon: const Icon(EvaIcons.logIn),
-                      label: const Text('Araç girişi'),
-                      style: ElevatedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
+                  const SizedBox(height: 16),
+
+                  if (customerData != null && customerData!.isNotEmpty)
+                    CustomerListCard(
+                      customers: customerData!,
+                      selectedCustomer: selectedCustomer,
+                      onSelected: (c) => setState(() => selectedCustomer = c),
+                    ),
+
+                  const SizedBox(height: 24),
+
+                  if (selectedCar != null)
+                    Center(
+                      child: ElevatedButton.icon(
+                        onPressed: () {
+                          if (selectedCustomer == null) {
+                            StringHelper.showErrorDialog(context, 'Lütfen bir müşteri seçiniz.');
+                            return;
+                          }
+
+                          if (!foundLog || latestLog!.taskStatus.taskStatusName == 'GÖREV YOK') {
+                            _submitEntry();
+                          } else {
+                            StringHelper.showErrorDialog(context, 'Araba şu anda tamir aşamasında.');
+                          }
+                        },
+                        icon: const Icon(EvaIcons.logIn),
+                        label: const Text('Araç girişi'),
+                        style: ElevatedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
                         ),
                       ),
                     ),
+                ] else ...[
+                  const SizedBox(height: 16),
+                  SvgPicture.asset(
+                    statusSvgMap[latestLog!.taskStatus.taskStatusName] ?? 'assets/images/vector/stop.svg',
+                    width: 48,
+                    height: 48,
                   ),
-              ] else ...[
-                const SizedBox(height: 16),
-                SvgPicture.asset(
-                  statusSvgMap[latestLog!.taskStatus.taskStatusName] ?? 'assets/images/vector/stop.svg',
-                  width: 48,
-                  height: 48,
-                ),
-                const SizedBox(height: 16),
-                Text('Görev Durumu: ${latestLog!.taskStatus.taskStatusName}'),
+                  const SizedBox(height: 16),
+                  Text('Görev Durumu: ${latestLog!.taskStatus.taskStatusName}'),
+                ],
               ],
-            ],
-          ),
-        ),
-
-        // لودینگ ذخیره
-        if (isSaving) ...[
-          Positioned.fill(
-            child: ModalBarrier(
-              dismissible: false,
-              color: Colors.black.withOpacity(0.3),
             ),
           ),
-          const Center(child: CircularProgressIndicator()),
+
+          // لودینگ ذخیره
+          if (isSaving) ...[
+            Positioned.fill(
+              child: ModalBarrier(
+                dismissible: false,
+                color: Colors.black.withOpacity(0.3),
+              ),
+            ),
+            const Center(child: CircularProgressIndicator()),
+          ],
         ],
-      ],
+      ),
     );
   }
 }

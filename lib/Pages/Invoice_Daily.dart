@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:pdf/widgets.dart' as pw;
@@ -18,7 +17,6 @@ import '../DTO/CarRepairLogResponseDTO.dart';
 import '../DTO/CarRepairLogRequestDTO.dart';
 import '../DTO/PartUsed.dart';
 
-
 class InvoiceDaily extends StatefulWidget {
   final String? plate;
   final VoidCallback? onConfirmed;
@@ -33,6 +31,8 @@ class _InvoiceDailyState extends State<InvoiceDaily> {
   pw.Font? customFont;
   pw.MemoryImage? logoImage;
   final TextEditingController _plateController = TextEditingController();
+  final FocusNode _plateFocusNode = FocusNode();
+
   CarRepairLogResponseDTO? log;
   bool showInvoiceParam = true;
 
@@ -44,16 +44,20 @@ class _InvoiceDailyState extends State<InvoiceDaily> {
   final List<TextEditingController> quantityControllers = [];
   final List<TextEditingController> priceControllers = [];
   final List<TextEditingController> totalPriceControllers = [];
+
+  // FocusNodeهای هر TextField داینامیک
+  final List<FocusNode> nameFocusNodes = [];
+  final List<FocusNode> quantityFocusNodes = [];
+  final List<FocusNode> priceFocusNodes = [];
+
   final TextEditingController invoicePriceController = TextEditingController();
   final TextEditingController _amountPaidController = TextEditingController();
   final TextEditingController _amountDueController = TextEditingController();
-  bool _isAmountPaidEnabled=true;
-
+  bool _isAmountPaidEnabled = true;
 
   double totalSum = 0;
   final ValueNotifier<String> totalPriceText = ValueNotifier<String>("Toplam: 0.00 TL");
   final ValueNotifier<String> amountDueText = ValueNotifier<String>("Kalan Tutar: 0.00 TL");
-
 
   @override
   void initState() {
@@ -66,55 +70,64 @@ class _InvoiceDailyState extends State<InvoiceDaily> {
     }
   }
 
-
   @override
   void dispose() {
+    _plateFocusNode.dispose();
+
+    for (var node in nameFocusNodes) node.dispose();
+    for (var node in quantityFocusNodes) node.dispose();
+    for (var node in priceFocusNodes) node.dispose();
+
     _plateController.dispose();
-    for (var c in nameControllers) {
-      c.dispose();
-    }
-    for (var c in quantityControllers) {
-      c.dispose();
-    }
-    for (var c in priceControllers) {
-      c.dispose();
-    }
+
+    for (var c in nameControllers) c.dispose();
+    for (var c in quantityControllers) c.dispose();
+    for (var c in priceControllers) c.dispose();
     for (var c in totalPriceControllers) c.dispose();
+
+    invoicePriceController.dispose();
+    _amountPaidController.dispose();
+    _amountDueController.dispose();
+
     super.dispose();
   }
 
   void _syncControllersWithParts() {
-    // پاک کردن کنترلرهای قدیمی
-    for (var c in nameControllers) {
-      c.dispose();
-    }
-    for (var c in quantityControllers) {
-      c.dispose();
-    }
-    for (var c in priceControllers) {
-      c.dispose();
-    }
-    for (var c in totalPriceControllers) {
-      c.dispose();
-    }
+    // dispose کردن FocusNodeهای قبلی
+    for (var node in nameFocusNodes) node.dispose();
+    for (var node in quantityFocusNodes) node.dispose();
+    for (var node in priceFocusNodes) node.dispose();
+
+    nameFocusNodes.clear();
+    quantityFocusNodes.clear();
+    priceFocusNodes.clear();
+
+    // dispose کردن کنترلرهای قدیمی
+    for (var c in nameControllers) c.dispose();
+    for (var c in quantityControllers) c.dispose();
+    for (var c in priceControllers) c.dispose();
+    for (var c in totalPriceControllers) c.dispose();
+
     nameControllers.clear();
     quantityControllers.clear();
     priceControllers.clear();
     totalPriceControllers.clear();
 
-    // ساخت کنترلر جدید بر اساس parts
     for (var part in parts) {
       nameControllers.add(TextEditingController(text: part.partName));
       quantityControllers.add(TextEditingController(text: part.quantity.toString()));
       priceControllers.add(TextEditingController(text: part.partPrice.toString()));
       totalPriceControllers.add(TextEditingController(text: (part.quantity * part.partPrice).toString()));
 
+      nameFocusNodes.add(FocusNode());
+      quantityFocusNodes.add(FocusNode());
+      priceFocusNodes.add(FocusNode());
     }
   }
 
   Future<void> loadAssets() async {
     final fontData = await rootBundle.load("assets/fonts/Vazirmatn-Regular.ttf");
-    final imageData = await rootBundle.load("assets/images/logo.png");
+    final imageData = await rootBundle.load("assets/images/Logo.png");
 
     setState(() {
       customFont = pw.Font.ttf(fontData);
@@ -155,7 +168,6 @@ class _InvoiceDailyState extends State<InvoiceDaily> {
         }).toList();
 
       } else {
-        // اگر partsUsed خالی بود، می‌تونید مقدار پیش‌فرض بذارید یا کاری نکنید
         parts = [];
       }
 
@@ -166,8 +178,7 @@ class _InvoiceDailyState extends State<InvoiceDaily> {
     }
   }
 
-
-  void _updateLog()async{
+  void _updateLog() async {
     final double totalInvoice = parts.fold(0.0, (sum, part) => sum + part.partPrice * part.quantity);
 
     final previousPayments = (log?.paymentRecords ?? []).fold<double>(
@@ -297,8 +308,7 @@ class _InvoiceDailyState extends State<InvoiceDaily> {
     totalPriceText.value = "Toplam: ${sum.toStringAsFixed(2)} ₺";
 
     double amountDue = remaining - (double.tryParse(_amountPaidController.text) ?? 0.0);
-    amountDueText.value = "Kalan: ${amountDue} ₺";
-
+    amountDueText.value = "Kalan: ${amountDue.toStringAsFixed(2)} ₺";
   }
 
   Widget buildPaymentSection() {
@@ -307,7 +317,6 @@ class _InvoiceDailyState extends State<InvoiceDaily> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.end,
       children: [
-        // نمایش لیست پرداخت‌ها (اگه چیزی باشه)
         if (payments.isNotEmpty) ...[
           const Text(
             'Yapılan Ödemeler:',
@@ -324,8 +333,6 @@ class _InvoiceDailyState extends State<InvoiceDaily> {
           }).toList(),
           const SizedBox(height: 12),
         ],
-
-        // فیلد جدید برای ثبت پرداخت جدید
         SizedBox(
           width: 140,
           child: TextField(
@@ -371,6 +378,7 @@ class _InvoiceDailyState extends State<InvoiceDaily> {
                       flex: 6,
                       child: TextFormField(
                         controller: nameControllers[index],
+                        focusNode: nameFocusNodes[index],
                         decoration: const InputDecoration(
                           labelText: 'Parça Adı',
                           border: OutlineInputBorder(),
@@ -389,6 +397,7 @@ class _InvoiceDailyState extends State<InvoiceDaily> {
                       flex: 2,
                       child: TextFormField(
                         controller: quantityControllers[index],
+                        focusNode: quantityFocusNodes[index],
                         keyboardType: TextInputType.number,
                         textAlign: TextAlign.center,
                         decoration: const InputDecoration(
@@ -420,6 +429,7 @@ class _InvoiceDailyState extends State<InvoiceDaily> {
                       flex: 2,
                       child: TextFormField(
                         controller: priceControllers[index],
+                        focusNode: priceFocusNodes[index],
                         keyboardType: TextInputType.number,
                         textAlign: TextAlign.right,
                         decoration: const InputDecoration(
@@ -497,7 +507,6 @@ class _InvoiceDailyState extends State<InvoiceDaily> {
                 ),
               ],
             ),
-
           );
         }).toList(),
 
@@ -568,61 +577,65 @@ class _InvoiceDailyState extends State<InvoiceDaily> {
     );
   }
 
-
   @override
   Widget build(BuildContext context) {
-
-    return Padding(
-
-      padding: const EdgeInsets.all(12),
-      child: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            if (widget.plate == null || widget.plate!.isEmpty)
-              TextField(
-                controller: _plateController,
-                onSubmitted: (_) => _searchByPlate(),
-                decoration: InputDecoration(
-                  labelText: "Plaka Numarası",
-                  suffixIcon: IconButton(
-                    icon: const Icon(EvaIcons.search),
-                    onPressed: _searchByPlate,
+    return GestureDetector(
+      behavior: HitTestBehavior.translucent,
+      onTap: () {
+        FocusScopeNode currentFocus = FocusScope.of(context);
+        if (!currentFocus.hasPrimaryFocus && currentFocus.focusedChild != null) {
+          currentFocus.focusedChild!.unfocus();
+        }
+      },
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              if (widget.plate == null || widget.plate!.isEmpty)
+                TextField(
+                  controller: _plateController,
+                  decoration: InputDecoration(
+                    labelText: "Plaka Numarası",
+                    suffixIcon: IconButton(
+                      icon: const Icon(EvaIcons.search),
+                      onPressed: _searchByPlate,
+                    ),
+                    border: const OutlineInputBorder(),
                   ),
-                  border: const OutlineInputBorder(),
                 ),
-              ),
 
-            const SizedBox(height: 20),
-            ElevatedButton.icon(
-              onPressed: (customFont == null || logoImage == null || parts.isEmpty)
-                  ? null
-                  :  () {
-                InvoicePdfHelper.generateAndSaveInvoicePdf(
-                  customFont: customFont!,
-                  logoImage: logoImage!,
-                  parts: parts,
-                  log: log!,
-                  licensePlate: log!.carInfo.licensePlate,
-                );
-              },
-              icon: const Icon(EvaIcons.fileText),
-              label: const Text("Faturayı Göster"),
-              style: ElevatedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
+              const SizedBox(height: 20),
+              ElevatedButton.icon(
+                onPressed: (customFont == null || logoImage == null || parts.isEmpty)
+                    ? null
+                    : () {
+                  InvoicePdfHelper.generateAndSaveInvoicePdf(
+                    customFont: customFont!,
+                    logoImage: logoImage!,
+                    parts: parts,
+                    log: log!,
+                    licensePlate: log!.carInfo.licensePlate,
+                  );
+                },
+                icon: const Icon(EvaIcons.fileText),
+                label: const Text("Faturayı Göster"),
+                style: ElevatedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
                 ),
               ),
-            ),
-            const SizedBox(height: 24),
-            if (log != null) ...[
-              CarRepairedLogCard(log: log!),
               const SizedBox(height: 24),
+              if (log != null) ...[
+                CarRepairedLogCard(log: log!),
+                const SizedBox(height: 24),
+              ],
+              if (showInvoiceParam) buildPartsInputList(),
             ],
-            if(showInvoiceParam)
-              buildPartsInputList(),
-          ],
+          ),
         ),
       ),
     );

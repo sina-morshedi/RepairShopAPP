@@ -8,6 +8,7 @@ import 'ManagerMenu.dart';
 import 'RepairmanMenu.dart';
 import 'user_prefs.dart';
 import 'Dashboard.dart';
+import 'InventoryForm.dart';
 
 class MainMenuPage extends StatefulWidget {
   const MainMenuPage({super.key});
@@ -67,6 +68,8 @@ class _MainMenuPageState extends State<MainMenuPage> {
         return Dashboard();
       case "manager":
         return ManagerMenu(selectedRole: selectedRole);
+      case "inventory":
+        return Inventoryform();
       case "secretary":
         return const Center(child: Text("Sekreter sayfası burada olacak"));
       case "technician":

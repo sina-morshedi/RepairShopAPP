@@ -51,6 +51,7 @@ class _RepairmenLogListTabState extends State<RepairmenLogListTab> {
         .toList() ??
         [];
 
+    if (!mounted) return;
     setState(() {
       repairmen = filtered;
       selectedRepairman = filtered.isNotEmpty ? filtered.first : null;
